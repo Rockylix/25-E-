@@ -20,6 +20,7 @@
 #include "main.h"
 #include "adc.h"
 #include "dma.h"
+#include "i2c.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -30,7 +31,6 @@
 #include "harmonic3_table.h"
 #include <math.h>
 #include <string.h>
-#include "filter.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -113,7 +113,6 @@ void V_Ctrl_Init(V_Ctrl_TypeDef* v_ctrl);
 void calculate_aver(V_Ctrl_TypeDef* v_ctrl);
 void calculate_rms(V_Ctrl_TypeDef* v_ctrl);
 void v_pid_update(V_Ctrl_TypeDef* v_ctrl);
-void DMA_MedianFilter_Grouped(const uint16_t* input, uint16_t input_len, float* output, uint16_t group_size);
 
 
 
@@ -158,6 +157,7 @@ int main(void)
   MX_TIM5_Init();
   MX_ADC1_Init();
   MX_TIM8_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 	
 	
@@ -167,6 +167,9 @@ int main(void)
 	
 	//用来中断对w0积分
 	HAL_TIM_Base_Start_IT(&htim5);
+	
+	//用来中断对w0积分
+	HAL_TIM_Base_Start_IT(&htim8);
 	
 	//开启ADC采样
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)v_ctrl.v_buf, V_BUFFER_SIZE);
@@ -182,8 +185,7 @@ int main(void)
 		if(dma_flag == 1)
     {
       dma_flag = 0;
-			
-			DMA_MedianFilter_Grouped(v_ctrl.v_buf, V_BUFFER_SIZE, v_ctrl.v_filted, V_FILTER_SIZE);
+
 			calculate_aver(&v_ctrl);
 			calculate_rms(&v_ctrl);
 			
@@ -258,6 +260,12 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
+	if(htim->Instance == TIM8)
+	{
+		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_1);
+	}
+	
+	
 	if(htim->Instance == TIM5)
 	{
 		static float w0 = 2.0f * PI * 50.0f;
@@ -340,26 +348,26 @@ void calculate_aver(V_Ctrl_TypeDef* v_ctrl)
 {
 	//计算平均值（偏置）
 	v_ctrl->Vavr = 0;
-	for(int i=0; i<(V_BUFFER_SIZE / V_FILTER_SIZE); i++)
+	for(int i=0; i<(V_BUFFER_SIZE); i++)
 	{
-			float v = v_ctrl->v_filted[i];
+			float v = v_ctrl->v_buf[i] * 3.3f / 4096.0f;
 			v_ctrl->Vavr += v;
 	}
 
-	v_ctrl->Vavr /= (V_BUFFER_SIZE / V_FILTER_SIZE);
+	v_ctrl->Vavr /= V_BUFFER_SIZE;
 }
 
 void calculate_rms(V_Ctrl_TypeDef* v_ctrl)
 {
 	//去偏置再计算 RMS
 	v_ctrl->Vrms = 0;
-	for(int i=0; i<(V_BUFFER_SIZE / V_FILTER_SIZE); i++)
+	for(int i=0; i<V_BUFFER_SIZE; i++)
 	{
-			float v = v_ctrl->v_filted[i];
+			float v = v_ctrl->v_buf[i] * 3.3f / 4096.0f;
 			float ac = v - v_ctrl->Vavr;
-			v_ctrl->Vrms  += (ac * ac);
+			v_ctrl->Vrms += (ac * ac);
 	}
-	v_ctrl->Vrms = sqrtf(v_ctrl->Vrms/(V_BUFFER_SIZE/V_FILTER_SIZE));
+	v_ctrl->Vrms = sqrtf(v_ctrl->Vrms/V_BUFFER_SIZE);
 	v_ctrl->Vrms = v_ctrl->Vrms*100;
 }
 
@@ -376,21 +384,6 @@ void v_pid_update(V_Ctrl_TypeDef* v_ctrl)
 }
 
 
-// 整体处理函数，每5个一组，返回中值滤波后的电压数组
-void DMA_MedianFilter_Grouped(const uint16_t* input, uint16_t input_len, float* output, uint16_t group_size)
-{
-    if (input_len % group_size != 0)
-		{
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
-			return;
-		}
-		
-    uint16_t num_groups = input_len / group_size;
-
-    for (uint16_t i = 0; i < num_groups; i++) {
-        output[i] = DMA_U16_Filter_Median(&input[i * group_size], group_size);
-    }
-}
 
 /* USER CODE END 4 */
 
