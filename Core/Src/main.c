@@ -29,8 +29,11 @@
 /* USER CODE BEGIN Includes */
 #include "sin_table.h"
 #include "harmonic3_table.h"
+#include "oled.h"
 #include <math.h>
 #include <string.h>
+#include <stdio.h>
+#include "button.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -76,6 +79,20 @@ typedef struct
 	float err_prev;
 } V_Ctrl_TypeDef;
 
+typedef struct
+{
+	uint8_t sin_k[16];
+	uint8_t vrms[8];
+	uint8_t vtar[8];
+} OLED_String_Group;
+
+
+typedef enum
+{
+	info_page = 0,
+	setting_page
+} PAGE_NUM;
+
 
 /* USER CODE END PTD */
 
@@ -94,7 +111,17 @@ typedef struct
 
 /* USER CODE BEGIN PV */
 V_Ctrl_TypeDef v_ctrl = {0};
+const OLED_String_Group oled_string_group = {
+	.sin_k = "    M:",
+	.vrms  = "V_RMS:",
+	.vtar  = "V_Tar:"
+};
 volatile uint8_t dma_flag = 0;
+
+Button btn0 = {0};
+Button btn1 = {0};
+Button btn2 = {0};
+Button btn3 = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -113,6 +140,16 @@ void V_Ctrl_Init(V_Ctrl_TypeDef* v_ctrl);
 void calculate_aver(V_Ctrl_TypeDef* v_ctrl);
 void calculate_rms(V_Ctrl_TypeDef* v_ctrl);
 void v_pid_update(V_Ctrl_TypeDef* v_ctrl);
+
+
+/*------------------------屏幕显示所用函数--------------------------------*/
+void display_title(const OLED_String_Group* oled_string_group);
+void display_info(const V_Ctrl_TypeDef* v_ctrl);
+
+
+/*--------------------按键控制所用函数--------------------------*/
+void button_group_init(void);
+void button_group_update(void);
 
 
 
@@ -160,9 +197,10 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 	
-	
+	//初始化PID控制
 	V_Ctrl_Init(&v_ctrl);
 	
+	//开启PWM波
 	pwm_start();
 	
 	//用来中断对w0积分
@@ -174,7 +212,14 @@ int main(void)
 	//开启ADC采样
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)v_ctrl.v_buf, V_BUFFER_SIZE);
 	
-	Tx_Buf_TypeDef tx_buf = {0};
+	OLED_Init();
+	OLED_Display_On();
+	OLED_Clear();
+	display_title(&oled_string_group);
+	
+	//初始化按键
+	button_group_init();
+	
 	
   /* USER CODE END 2 */
 
@@ -182,6 +227,29 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+		button_group_update();
+		
+		if(Button_GetEvent(&btn0) == BUTTON_EVENT_CLICK)
+		{
+			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
+		}
+		
+		if(Button_GetEvent(&btn1) == BUTTON_EVENT_CLICK)
+		{
+		
+		}
+		
+		if(Button_GetEvent(&btn2) == BUTTON_EVENT_CLICK)
+		{
+		
+		}
+		
+		if(Button_GetEvent(&btn3) == BUTTON_EVENT_CLICK)
+		{
+		
+		}
+		
+		
 		if(dma_flag == 1)
     {
       dma_flag = 0;
@@ -189,21 +257,11 @@ int main(void)
 			calculate_aver(&v_ctrl);
 			calculate_rms(&v_ctrl);
 			
-			v_pid_update(&v_ctrl);
-			 
-			tx_buf.data[0] = v_ctrl.Vrms;
-			tx_buf.data[1] = v_ctrl.sin_k;
-			
-			tx_buf.tail[0] = 0x00;
-			tx_buf.tail[1] = 0x00;
-			tx_buf.tail[2] = 0x80;
-			tx_buf.tail[3] = 0x7f;
-			
-			HAL_UART_Transmit(&huart1, (uint8_t *)&tx_buf, sizeof(Tx_Buf_TypeDef), HAL_MAX_DELAY);
+			v_pid_update(&v_ctrl); 
 
+			display_info(&v_ctrl);
 			
 			HAL_ADC_Start_DMA(&hadc1, (uint32_t*)v_ctrl.v_buf, V_BUFFER_SIZE);
-      
     }
     /* USER CODE END WHILE */
 
@@ -384,6 +442,41 @@ void v_pid_update(V_Ctrl_TypeDef* v_ctrl)
 }
 
 
+void display_title(const OLED_String_Group* oled_string_group)
+{
+	OLED_ShowString(0, 0, (uint8_t*)oled_string_group->sin_k, 16);
+	OLED_ShowString(0, 2, (uint8_t*)oled_string_group->vrms, 16);
+	OLED_ShowString(0, 4, (uint8_t*)oled_string_group->vtar, 16);
+}
+
+void display_info(const V_Ctrl_TypeDef* v_ctrl)
+{
+	static char sin_k[8];
+	static char v_rms[8];
+	static char v_tar[8];
+	
+	sprintf(sin_k, "%.3f", v_ctrl->sin_k);
+	sprintf(v_rms, "%.3f", v_ctrl->Vrms);
+	sprintf(v_tar, "%.1f", v_ctrl->Vtar);
+	OLED_ShowString(50, 0, (uint8_t *)sin_k, 16);
+	OLED_ShowString(50, 2, (uint8_t *)v_rms, 16);
+	OLED_ShowString(50, 4, (uint8_t *)v_tar, 16);
+}
+
+void button_group_init(void)
+{
+	Button_Init(&btn0, GPIOE, GPIO_PIN_0, 0);
+	Button_Init(&btn1, GPIOE, GPIO_PIN_1, 0);
+	Button_Init(&btn2, GPIOE, GPIO_PIN_2, 0);
+	Button_Init(&btn3, GPIOE, GPIO_PIN_3, 0);
+}
+void button_group_update(void)
+{
+	Button_Update(&btn0);
+	Button_Update(&btn1);
+	Button_Update(&btn2);
+	Button_Update(&btn3);
+}
 
 /* USER CODE END 4 */
 
