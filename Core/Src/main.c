@@ -83,6 +83,9 @@ typedef struct
 {
 	uint8_t sin_k[16];
 	uint8_t vrms[8];
+
+	uint8_t kp[8];
+	uint8_t ki[8];
 	uint8_t vtar[8];
 } OLED_String_Group;
 
@@ -90,8 +93,23 @@ typedef struct
 typedef enum
 {
 	info_page = 0,
-	setting_page
+	setting_page,
+	in_setting
 } PAGE_NUM;
+
+typedef enum
+{
+	sel_kp = 0,
+	sel_ki,
+	sel_var
+} SEL_NUM;
+
+
+typedef struct
+{
+	uint8_t page_num;
+	uint8_t sel_num;
+} OLED_STATE;
 
 
 /* USER CODE END PTD */
@@ -111,12 +129,19 @@ typedef enum
 
 /* USER CODE BEGIN PV */
 V_Ctrl_TypeDef v_ctrl = {0};
+
 const OLED_String_Group oled_string_group = {
-	.sin_k = "    M:",
-	.vrms  = "V_RMS:",
-	.vtar  = "V_Tar:"
+	.sin_k	= "    M:",
+	.vrms		= "V_RMS:",
+
+	.kp			= "   kp:",
+	.ki			= "   ki:",
+	.vtar		= "V_Tar:"
 };
+
 volatile uint8_t dma_flag = 0;
+
+OLED_STATE oled_state = {0};
 
 Button btn0 = {0};
 Button btn1 = {0};
@@ -143,13 +168,18 @@ void v_pid_update(V_Ctrl_TypeDef* v_ctrl);
 
 
 /*------------------------屏幕显示所用函数--------------------------------*/
-void display_title(const OLED_String_Group* oled_string_group);
+void display_info_page_title(const OLED_String_Group* oled_string_group);
 void display_info(const V_Ctrl_TypeDef* v_ctrl);
+void display_setting_page_title(const OLED_String_Group* oled_string_group);
+void display_array(const OLED_STATE* oled_state);
+void display_star(const OLED_STATE* oled_state);
+void display_setting_info(V_Ctrl_TypeDef* v_ctrl);
 
 
 /*--------------------按键控制所用函数--------------------------*/
 void button_group_init(void);
 void button_group_update(void);
+
 
 
 
@@ -211,11 +241,9 @@ int main(void)
 	
 	//开启ADC采样
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)v_ctrl.v_buf, V_BUFFER_SIZE);
-	
 	OLED_Init();
 	OLED_Display_On();
-	OLED_Clear();
-	display_title(&oled_string_group);
+	display_info_page_title(&oled_string_group);
 	
 	//初始化按键
 	button_group_init();
@@ -229,24 +257,102 @@ int main(void)
   {
 		button_group_update();
 		
+		//*号键
 		if(Button_GetEvent(&btn0) == BUTTON_EVENT_CLICK)
 		{
-			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
+			//切换页面
+			if(oled_state.page_num != in_setting)
+			{
+				if(oled_state.page_num == 1) oled_state.page_num = 0;
+				else oled_state.page_num ++;
+			}
+
+			//显示页面标题
+			if(oled_state.page_num == info_page) display_info_page_title(&oled_string_group);
+			else if(oled_state.page_num == setting_page)
+			{
+				display_setting_page_title(&oled_string_group);
+				display_setting_info(&v_ctrl);
+				display_array(&oled_state);
+			}
 		}
 		
+		//#号键
 		if(Button_GetEvent(&btn1) == BUTTON_EVENT_CLICK)
 		{
-		
+			if(oled_state.page_num == setting_page)
+			{
+				oled_state.page_num = in_setting;
+				display_star(&oled_state);
+			}
+			else if(oled_state.page_num == in_setting)
+			{
+				oled_state.page_num = setting_page;
+				display_array(&oled_state);
+			}
 		}
 		
+		//下箭头
 		if(Button_GetEvent(&btn2) == BUTTON_EVENT_CLICK)
 		{
-		
+			
+			if(oled_state.page_num == setting_page)
+			{	
+				if(oled_state.sel_num == 3) oled_state.sel_num = 0;
+				else oled_state.sel_num ++;
+				display_array(&oled_state);
+			}
+			else if(oled_state.page_num == in_setting)
+			{
+				switch(oled_state.sel_num)
+				{
+					case sel_kp:
+						v_ctrl.kp -= 0.01;
+						if(v_ctrl.kp < 0.0f) v_ctrl.kp = 0.0f;
+						break;
+					case sel_ki:
+						v_ctrl.ki -= 0.01;
+						if(v_ctrl.ki < 0.0f) v_ctrl.ki = 0.0f;
+						break;
+					case sel_var:
+						v_ctrl.Vtar -= 0.1;
+						if(v_ctrl.Vtar < 0.0f) v_ctrl.Vtar = 0.0f;
+						break;
+				}
+				
+				display_setting_info(&v_ctrl);
+			}
+
 		}
 		
+		//上箭头
 		if(Button_GetEvent(&btn3) == BUTTON_EVENT_CLICK)
 		{
-		
+			if(oled_state.page_num == setting_page)
+			{	
+				if(oled_state.sel_num == 0) oled_state.sel_num = 3;
+				else oled_state.sel_num --;
+				display_array(&oled_state);
+			}
+			
+			
+			else if(oled_state.page_num == in_setting)
+			{
+				switch(oled_state.sel_num)
+				{
+					case sel_kp:
+						v_ctrl.kp += 0.01;
+						break;
+					case sel_ki:
+						v_ctrl.ki += 0.01;
+						break;
+					case sel_var:
+						v_ctrl.Vtar += 0.1;
+						break;
+				}
+				
+				display_setting_info(&v_ctrl);
+			}
 		}
 		
 		
@@ -258,8 +364,8 @@ int main(void)
 			calculate_rms(&v_ctrl);
 			
 			v_pid_update(&v_ctrl); 
-
-			display_info(&v_ctrl);
+			
+			if(oled_state.page_num == info_page) display_info(&v_ctrl);
 			
 			HAL_ADC_Start_DMA(&hadc1, (uint32_t*)v_ctrl.v_buf, V_BUFFER_SIZE);
     }
@@ -442,10 +548,18 @@ void v_pid_update(V_Ctrl_TypeDef* v_ctrl)
 }
 
 
-void display_title(const OLED_String_Group* oled_string_group)
+void display_info_page_title(const OLED_String_Group* oled_string_group)
 {
+	OLED_Clear();
 	OLED_ShowString(0, 0, (uint8_t*)oled_string_group->sin_k, 16);
 	OLED_ShowString(0, 2, (uint8_t*)oled_string_group->vrms, 16);
+}
+
+void display_setting_page_title(const OLED_String_Group* oled_string_group)
+{
+	OLED_Clear();
+	OLED_ShowString(0, 0, (uint8_t*)oled_string_group->kp, 16);
+	OLED_ShowString(0, 2, (uint8_t*)oled_string_group->ki, 16);
 	OLED_ShowString(0, 4, (uint8_t*)oled_string_group->vtar, 16);
 }
 
@@ -453,15 +567,75 @@ void display_info(const V_Ctrl_TypeDef* v_ctrl)
 {
 	static char sin_k[8];
 	static char v_rms[8];
-	static char v_tar[8];
 	
 	sprintf(sin_k, "%.3f", v_ctrl->sin_k);
 	sprintf(v_rms, "%.3f", v_ctrl->Vrms);
-	sprintf(v_tar, "%.1f", v_ctrl->Vtar);
 	OLED_ShowString(50, 0, (uint8_t *)sin_k, 16);
 	OLED_ShowString(50, 2, (uint8_t *)v_rms, 16);
-	OLED_ShowString(50, 4, (uint8_t *)v_tar, 16);
 }
+
+void display_array(const OLED_STATE* oled_state)
+{
+	
+	//先清除所有箭头
+	OLED_ShowString(100, 0, (uint8_t*)"   ", 16);
+	OLED_ShowString(100, 2, (uint8_t*)"   ", 16);
+	OLED_ShowString(100, 4, (uint8_t*)"   ", 16);
+	OLED_ShowString(100, 6, (uint8_t*)"   ", 16);
+	static uint8_t array[4] = "<--";
+	switch(oled_state->sel_num)
+	{
+		case sel_kp:
+			OLED_ShowString(100, 0, array, 16);
+			break;
+		case sel_ki:
+			OLED_ShowString(100, 2, array, 16);
+			break;
+		case sel_var:
+			OLED_ShowString(100, 4, array, 16);
+			break;
+	}
+}
+
+void display_star(const OLED_STATE* oled_state)
+{
+	//先清除所有星星
+	OLED_ShowString(100, 0, (uint8_t*)"   ", 16);
+	OLED_ShowString(100, 2, (uint8_t*)"   ", 16);
+	OLED_ShowString(100, 4, (uint8_t*)"   ", 16);
+	OLED_ShowString(100, 6, (uint8_t*)"   ", 16);
+	static uint8_t array[4] = "*";
+	switch(oled_state->sel_num)
+	{
+		case sel_kp:
+			OLED_ShowString(100, 0, array, 16);
+			break;
+		case sel_ki:
+			OLED_ShowString(100, 2, array, 16);
+			break;
+		case sel_var:
+			OLED_ShowString(100, 4, array, 16);
+			break;
+	}
+}
+
+
+
+void display_setting_info(V_Ctrl_TypeDef* v_ctrl)
+{
+	static char kp[8];
+	static char ki[8];
+	static char vtar[8];
+	
+	sprintf(kp, "%.2f", v_ctrl->kp);
+	sprintf(ki, "%.2f", v_ctrl->ki);
+	sprintf(vtar, "%.1f", v_ctrl->Vtar);
+	OLED_ShowString(50, 0, (uint8_t *)kp, 16);
+	OLED_ShowString(50, 2, (uint8_t *)ki, 16);
+	OLED_ShowString(50, 4, (uint8_t *)vtar, 16);
+}
+
+
 
 void button_group_init(void)
 {

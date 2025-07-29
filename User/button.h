@@ -3,7 +3,7 @@
 
 #include "stm32f4xx_hal.h" 
 
-#define debounce_ms 50 // 消抖时间，单位毫秒
+#define debounce_ms 20 // 消抖时间，单位毫秒
 #define long_press_ms 1000 // 长按时间阈值，单位毫秒
 
 // button event
