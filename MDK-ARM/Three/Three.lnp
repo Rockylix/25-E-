@@ -36,6 +36,7 @@
 "three\button.o"
 "three\get_offset.o"
 "three\sogi.o"
+"three\flash.o"
 "three\basicmathfunctions.o"
 "three\basicmathfunctionsf16.o"
 "three\bayesfunctions.o"

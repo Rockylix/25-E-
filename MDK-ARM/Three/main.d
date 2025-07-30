@@ -31,4 +31,4 @@ three/main.o: ..\Core\Src\main.c ..\Core\Inc\main.h \
   ..\Core\Inc\adc.h ..\Core\Inc\dma.h ..\Core\Inc\i2c.h \
   ..\Core\Inc\tim.h ..\Core\Inc\usart.h ..\Core\Inc\gpio.h \
   ..\User\sin_table.h ..\User\harmonic3_table.h ..\User\oled.h \
-  ..\User\button.h
+  ..\User\button.h ..\User\flash.h

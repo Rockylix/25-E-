@@ -34,6 +34,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "button.h"
+#include "flash.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -77,6 +78,8 @@ typedef struct
 	float ki;
 	float err;
 	float err_prev;
+	float w0;
+	uint8_t kv;
 } V_Ctrl_TypeDef;
 
 typedef struct
@@ -87,6 +90,8 @@ typedef struct
 	uint8_t kp[8];
 	uint8_t ki[8];
 	uint8_t vtar[8];
+	uint8_t kv[8];
+	uint8_t w0[8];
 } OLED_String_Group;
 
 
@@ -101,7 +106,9 @@ typedef enum
 {
 	sel_kp = 0,
 	sel_ki,
-	sel_var
+	sel_var,
+	sel_kv,
+	sel_w0
 } SEL_NUM;
 
 
@@ -118,6 +125,7 @@ typedef struct
 /* USER CODE BEGIN PD */
 #define PI 3.1415926f
 #define V_TAR_DEF 12.0f;
+#define FLASH_PARAM_ADDR  ((uint32_t)0x08060000)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -136,7 +144,9 @@ const OLED_String_Group oled_string_group = {
 
 	.kp			= "   kp:",
 	.ki			= "   ki:",
-	.vtar		= "V_Tar:"
+	.vtar		= "V_Tar:",
+	.kv			= "   kv:",
+	.w0			= "   W0:"
 };
 
 volatile uint8_t dma_flag = 0;
@@ -180,6 +190,7 @@ void display_setting_info(V_Ctrl_TypeDef* v_ctrl);
 void button_group_init(void);
 void button_group_update(void);
 
+/*------------flash------------*/
 
 
 
@@ -289,7 +300,12 @@ int main(void)
 			{
 				oled_state.page_num = setting_page;
 				display_array(&oled_state);
-			}
+				WriteFlashData(FLASH_PARAM_ADDR, &(v_ctrl.kv), sizeof(uint8_t));
+				WriteFlashData((FLASH_PARAM_ADDR+4),(uint8_t *)&(v_ctrl.Vtar), sizeof(float));
+				WriteFlashData((FLASH_PARAM_ADDR+8),(uint8_t *)&(v_ctrl.kp), sizeof(float));
+				WriteFlashData((FLASH_PARAM_ADDR+12),(uint8_t *)&(v_ctrl.ki), sizeof(float));
+				WriteFlashData((FLASH_PARAM_ADDR+16),(uint8_t *)&(v_ctrl.w0), sizeof(float));
+			}		
 		}
 		
 		//下箭头
@@ -298,7 +314,7 @@ int main(void)
 			
 			if(oled_state.page_num == setting_page)
 			{	
-				if(oled_state.sel_num == 3) oled_state.sel_num = 0;
+				if(oled_state.sel_num == 4) oled_state.sel_num = 0;
 				else oled_state.sel_num ++;
 				display_array(&oled_state);
 			}
@@ -318,6 +334,14 @@ int main(void)
 						v_ctrl.Vtar -= 0.1;
 						if(v_ctrl.Vtar < 0.0f) v_ctrl.Vtar = 0.0f;
 						break;
+					case sel_kv:
+						v_ctrl.kv -= 1;
+						if(v_ctrl.Vtar < 0.0f) v_ctrl.kv = 0.0f;
+						break;
+					case sel_w0:
+						v_ctrl.w0 -= 1;
+						if(v_ctrl.w0 < 0.0f) v_ctrl.w0 = 0.0f;
+					  break;
 				}
 				
 				display_setting_info(&v_ctrl);
@@ -330,12 +354,10 @@ int main(void)
 		{
 			if(oled_state.page_num == setting_page)
 			{	
-				if(oled_state.sel_num == 0) oled_state.sel_num = 3;
+				if(oled_state.sel_num == 0) oled_state.sel_num = 4;
 				else oled_state.sel_num --;
 				display_array(&oled_state);
 			}
-			
-			
 			else if(oled_state.page_num == in_setting)
 			{
 				switch(oled_state.sel_num)
@@ -348,6 +370,12 @@ int main(void)
 						break;
 					case sel_var:
 						v_ctrl.Vtar += 0.1;
+						break;
+					case sel_kv:
+						v_ctrl.kv += 1;
+						break;
+					case sel_w0:
+						v_ctrl.w0 += 1;
 						break;
 				}
 				
@@ -432,12 +460,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	
 	if(htim->Instance == TIM5)
 	{
-		static float w0 = 2.0f * PI * 50.0f;
 		static float w0t = 0.0f;
 		static Index_TypeDef INDEX = {0};
 		static Duty_TypeDef DUTY = {0};
 		
-		w0t += w0 * 0.0001f; //TIM5的周期为10K
+		w0t += v_ctrl.w0 * 0.0001f; 
 		if(w0t > 2*PI) w0t -= 2*PI;
 		else if(w0t < 0) w0t += 2*PI;
 		
@@ -502,10 +529,38 @@ void V_Ctrl_Init(V_Ctrl_TypeDef* v_ctrl)
 {
 	//统一赋0，需要改的单独列出来改
 	memset((void *)v_ctrl, 0x0, sizeof(V_Ctrl_TypeDef));
-	v_ctrl->Vtar = V_TAR_DEF;
-	v_ctrl->kp = 0.01f;
-	v_ctrl->ki = 0.01f;
+	uint8_t kv_flash = *(uint8_t*)(FLASH_PARAM_ADDR + 0);
+	float   Vtar_flash = *(float*)(FLASH_PARAM_ADDR + 4);
+	float   kp_flash   = *(float*)(FLASH_PARAM_ADDR + 8);
+	float   ki_flash   = *(float*)(FLASH_PARAM_ADDR + 12);
+	float   w0_flash   = *(float*)(FLASH_PARAM_ADDR + 16);
 	v_ctrl->sin_k = 0.5f;
+	
+	if (kv_flash != 0xFF)
+    v_ctrl->kv = kv_flash;
+	else
+			v_ctrl->kv = 50;
+
+	if (*(uint32_t*)&Vtar_flash != 0xFFFFFFFF)
+			v_ctrl->Vtar = Vtar_flash;
+	else
+			v_ctrl->Vtar = V_TAR_DEF;
+
+	if (*(uint32_t*)&kp_flash != 0xFFFFFFFF)
+			v_ctrl->kp = kp_flash;
+	else
+			v_ctrl->kp = 0.02f;
+
+	if (*(uint32_t*)&ki_flash != 0xFFFFFFFF)
+			v_ctrl->ki = ki_flash;
+	else
+			v_ctrl->ki = 0.01f;
+	if(*(uint32_t*)&v_ctrl->w0 != 0xFFFFFFFF)
+			v_ctrl->w0 = w0_flash;
+	else
+			v_ctrl->w0 = 100.0f * PI;
+
+    v_ctrl->ki = 0.01f;
 }
 
 void calculate_aver(V_Ctrl_TypeDef* v_ctrl)
@@ -532,7 +587,7 @@ void calculate_rms(V_Ctrl_TypeDef* v_ctrl)
 			v_ctrl->Vrms += (ac * ac);
 	}
 	v_ctrl->Vrms = sqrtf(v_ctrl->Vrms/V_BUFFER_SIZE);
-	v_ctrl->Vrms = v_ctrl->Vrms*100;
+	v_ctrl->Vrms = v_ctrl->Vrms*v_ctrl->kv;
 }
 
 void v_pid_update(V_Ctrl_TypeDef* v_ctrl)
@@ -541,8 +596,8 @@ void v_pid_update(V_Ctrl_TypeDef* v_ctrl)
 	v_ctrl->sin_k += v_ctrl->kp * (v_ctrl->err - v_ctrl->err_prev) + v_ctrl->ki * v_ctrl->err;
 
 	// 限幅处理
-	if (v_ctrl->sin_k < 0.2f) v_ctrl->sin_k = 0.2f;
-	if (v_ctrl->sin_k > 0.8f) v_ctrl->sin_k = 0.8f;
+	if (v_ctrl->sin_k < 0.05f) v_ctrl->sin_k = 0.05f;
+	if (v_ctrl->sin_k > 0.95f) v_ctrl->sin_k = 0.95f;
 
 	v_ctrl->err_prev = v_ctrl->err;
 }
@@ -558,9 +613,11 @@ void display_info_page_title(const OLED_String_Group* oled_string_group)
 void display_setting_page_title(const OLED_String_Group* oled_string_group)
 {
 	OLED_Clear();
-	OLED_ShowString(0, 0, (uint8_t*)oled_string_group->kp, 16);
-	OLED_ShowString(0, 2, (uint8_t*)oled_string_group->ki, 16);
-	OLED_ShowString(0, 4, (uint8_t*)oled_string_group->vtar, 16);
+	OLED_ShowString(0, 0, (uint8_t*)oled_string_group->kp, 12);
+	OLED_ShowString(0, 1, (uint8_t*)oled_string_group->ki, 12);
+	OLED_ShowString(0, 2, (uint8_t*)oled_string_group->vtar, 12);
+	OLED_ShowString(0, 3, (uint8_t*)oled_string_group->kv, 12);
+	OLED_ShowString(0, 4, (uint8_t*)oled_string_group->w0, 12);
 }
 
 void display_info(const V_Ctrl_TypeDef* v_ctrl)
@@ -578,21 +635,28 @@ void display_array(const OLED_STATE* oled_state)
 {
 	
 	//先清除所有箭头
-	OLED_ShowString(100, 0, (uint8_t*)"   ", 16);
-	OLED_ShowString(100, 2, (uint8_t*)"   ", 16);
-	OLED_ShowString(100, 4, (uint8_t*)"   ", 16);
-	OLED_ShowString(100, 6, (uint8_t*)"   ", 16);
+	OLED_ShowString(100, 0, (uint8_t*)"   ", 12);
+	OLED_ShowString(100, 1, (uint8_t*)"   ", 12);
+	OLED_ShowString(100, 2, (uint8_t*)"   ", 12);
+	OLED_ShowString(100, 3, (uint8_t*)"   ", 12);
+	OLED_ShowString(100, 4, (uint8_t*)"   ", 12);
 	static uint8_t array[4] = "<--";
 	switch(oled_state->sel_num)
 	{
 		case sel_kp:
-			OLED_ShowString(100, 0, array, 16);
+			OLED_ShowString(100, 0, array, 12);
 			break;
 		case sel_ki:
-			OLED_ShowString(100, 2, array, 16);
+			OLED_ShowString(100, 1, array, 12);
 			break;
 		case sel_var:
-			OLED_ShowString(100, 4, array, 16);
+			OLED_ShowString(100, 2, array, 12);
+			break;
+		case sel_kv:
+			OLED_ShowString(100, 3, array, 12);
+			break;
+		case sel_w0:
+			OLED_ShowString(100, 4, array, 12);
 			break;
 	}
 }
@@ -600,21 +664,28 @@ void display_array(const OLED_STATE* oled_state)
 void display_star(const OLED_STATE* oled_state)
 {
 	//先清除所有星星
-	OLED_ShowString(100, 0, (uint8_t*)"   ", 16);
-	OLED_ShowString(100, 2, (uint8_t*)"   ", 16);
-	OLED_ShowString(100, 4, (uint8_t*)"   ", 16);
-	OLED_ShowString(100, 6, (uint8_t*)"   ", 16);
+	OLED_ShowString(100, 0, (uint8_t*)"   ", 12);
+	OLED_ShowString(100, 1, (uint8_t*)"   ", 12);
+	OLED_ShowString(100, 2, (uint8_t*)"   ", 12);
+	OLED_ShowString(100, 3, (uint8_t*)"   ", 12);
+	OLED_ShowString(100, 4, (uint8_t*)"   ", 12);
 	static uint8_t array[4] = "*";
 	switch(oled_state->sel_num)
 	{
 		case sel_kp:
-			OLED_ShowString(100, 0, array, 16);
+			OLED_ShowString(100, 0, array, 12);
 			break;
 		case sel_ki:
-			OLED_ShowString(100, 2, array, 16);
+			OLED_ShowString(100, 1, array, 12);
 			break;
 		case sel_var:
-			OLED_ShowString(100, 4, array, 16);
+			OLED_ShowString(100, 2, array, 12);
+			break;
+		case sel_kv:
+			OLED_ShowString(100, 3, array, 12);
+			break;
+		case sel_w0:
+			OLED_ShowString(100, 4, array, 12);
 			break;
 	}
 }
@@ -626,13 +697,19 @@ void display_setting_info(V_Ctrl_TypeDef* v_ctrl)
 	static char kp[8];
 	static char ki[8];
 	static char vtar[8];
+	static char kv[8];
+	static char w0[8];
 	
 	sprintf(kp, "%.2f", v_ctrl->kp);
 	sprintf(ki, "%.2f", v_ctrl->ki);
 	sprintf(vtar, "%.1f", v_ctrl->Vtar);
-	OLED_ShowString(50, 0, (uint8_t *)kp, 16);
-	OLED_ShowString(50, 2, (uint8_t *)ki, 16);
-	OLED_ShowString(50, 4, (uint8_t *)vtar, 16);
+	sprintf(kv, "%d", v_ctrl->kv);
+	sprintf(w0, "%.2f", v_ctrl->w0);
+	OLED_ShowString(50, 0, (uint8_t *)kp, 12);
+	OLED_ShowString(50, 1, (uint8_t *)ki, 12);
+	OLED_ShowString(50, 2, (uint8_t *)vtar, 12);
+	OLED_ShowString(50, 3, (uint8_t *)kv, 12);
+	OLED_ShowString(50, 4, (uint8_t *)w0, 12);
 }
 
 
