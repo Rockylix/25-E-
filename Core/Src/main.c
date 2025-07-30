@@ -39,8 +39,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#define V_BUFFER_SIZE 840
-#define V_FILTER_SIZE 5
+#define DMA_SIZE 1600
 
 typedef struct
 {
@@ -67,9 +66,11 @@ typedef struct
 
 typedef struct
 {
-	uint16_t v_buf[V_BUFFER_SIZE];
-	float v_filted[V_BUFFER_SIZE/V_FILTER_SIZE];
+	uint16_t v_buf[DMA_SIZE/2];
+	uint16_t i_buf[DMA_SIZE/2];
 	float Vrms;
+	float Irms;
+	float Iavr;
 	float Vavr;
 	float Vtar;
 	float sin_k;
@@ -86,6 +87,7 @@ typedef struct
 {
 	uint8_t sin_k[16];
 	uint8_t vrms[8];
+	uint8_t irms[8];
 
 	uint8_t kp[8];
 	uint8_t ki[8];
@@ -141,6 +143,7 @@ V_Ctrl_TypeDef v_ctrl = {0};
 const OLED_String_Group oled_string_group = {
 	.sin_k	= "    M:",
 	.vrms		= "V_RMS:",
+	.irms		= "I_RMS:",
 
 	.kp			= "   kp:",
 	.ki			= "   ki:",
@@ -150,6 +153,8 @@ const OLED_String_Group oled_string_group = {
 };
 
 volatile uint8_t dma_flag = 0;
+uint16_t dma_buf[DMA_SIZE] = {0};
+
 
 OLED_STATE oled_state = {0};
 
@@ -175,6 +180,7 @@ void V_Ctrl_Init(V_Ctrl_TypeDef* v_ctrl);
 void calculate_aver(V_Ctrl_TypeDef* v_ctrl);
 void calculate_rms(V_Ctrl_TypeDef* v_ctrl);
 void v_pid_update(V_Ctrl_TypeDef* v_ctrl);
+void split_buf(V_Ctrl_TypeDef* v_ctrl);
 
 
 /*------------------------屏幕显示所用函数--------------------------------*/
@@ -251,7 +257,7 @@ int main(void)
 	HAL_TIM_Base_Start_IT(&htim8);
 	
 	//开启ADC采样
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)v_ctrl.v_buf, V_BUFFER_SIZE);
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)dma_buf, DMA_SIZE);
 	OLED_Init();
 	OLED_Display_On();
 	display_info_page_title(&oled_string_group);
@@ -385,18 +391,18 @@ int main(void)
 		
 		
 		if(dma_flag == 1)
-    {
-      dma_flag = 0;
-
+    	{
+      		dma_flag = 0;
+			split_buf(&v_ctrl);
 			calculate_aver(&v_ctrl);
 			calculate_rms(&v_ctrl);
 			
 			v_pid_update(&v_ctrl); 
 			
 			if(oled_state.page_num == info_page) display_info(&v_ctrl);
-			
-			HAL_ADC_Start_DMA(&hadc1, (uint32_t*)v_ctrl.v_buf, V_BUFFER_SIZE);
-    }
+
+			HAL_ADC_Start_DMA(&hadc1, (uint32_t*)dma_buf, DMA_SIZE);
+    	}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -454,7 +460,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim->Instance == TIM8)
 	{
-		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_1);
+		//HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_1);
 	}
 	
 	
@@ -464,7 +470,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		static Index_TypeDef INDEX = {0};
 		static Duty_TypeDef DUTY = {0};
 		
-		w0t += v_ctrl.w0*2*PI * 1/60000; 
+		w0t += v_ctrl.w0*2*PI * 1/60000; //60kHz
 		if(w0t > 2*PI) w0t -= 2*PI;
 		else if(w0t < 0) w0t += 2*PI;
 		
@@ -562,32 +568,53 @@ void V_Ctrl_Init(V_Ctrl_TypeDef* v_ctrl)
 
     v_ctrl->ki = 0.01f;
 }
-
+void split_buf(V_Ctrl_TypeDef* v_ctrl)
+{
+	//将DMA采样电压分为I和V
+	for(int i=0; i<DMA_SIZE; i++)
+	{
+		if(i %2 ==0)
+		{
+			v_ctrl->v_buf[i/2] = dma_buf[i];
+		}
+		else
+		{
+			v_ctrl->i_buf[i/2] = dma_buf[i];
+		}
+	}
+}
 void calculate_aver(V_Ctrl_TypeDef* v_ctrl)
 {
 	//计算平均值（偏置）
 	v_ctrl->Vavr = 0;
-	for(int i=0; i<(V_BUFFER_SIZE); i++)
+	for(int i=0; i<(DMA_SIZE/2); i++)
 	{
 			float v = v_ctrl->v_buf[i] * 3.3f / 4096.0f;
 			v_ctrl->Vavr += v;
+			float i_v = v_ctrl->i_buf[i] * 3.3f / 4096.0f;
+			v_ctrl->Iavr += i_v;
 	}
-
-	v_ctrl->Vavr /= V_BUFFER_SIZE;
+	v_ctrl->Vavr /= (DMA_SIZE/2);
+	v_ctrl->Iavr /= (DMA_SIZE/2);
 }
 
 void calculate_rms(V_Ctrl_TypeDef* v_ctrl)
 {
 	//去偏置再计算 RMS
 	v_ctrl->Vrms = 0;
-	for(int i=0; i<V_BUFFER_SIZE; i++)
+	for(int i=0; i<(DMA_SIZE/2); i++)
 	{
 			float v = v_ctrl->v_buf[i] * 3.3f / 4096.0f;
 			float ac = v - v_ctrl->Vavr;
 			v_ctrl->Vrms += (ac * ac);
+			//计算电流RMS
+			float i_v = v_ctrl->i_buf[i] * 3.3f / 4096.0f;
+			ac = i_v - v_ctrl->Iavr;
+			v_ctrl->Irms += (ac * ac);
 	}
-	v_ctrl->Vrms = sqrtf(v_ctrl->Vrms/V_BUFFER_SIZE);
-	v_ctrl->Vrms = v_ctrl->Vrms*v_ctrl->kv;
+	v_ctrl->Vrms = sqrtf(v_ctrl->Vrms/(DMA_SIZE/2));
+	v_ctrl->Vrms = v_ctrl->Vrms * v_ctrl->kv; //电压RMS乘以kv系数
+	v_ctrl->Irms = sqrtf(v_ctrl->Irms/(DMA_SIZE/2));
 }
 
 void v_pid_update(V_Ctrl_TypeDef* v_ctrl)
@@ -608,6 +635,7 @@ void display_info_page_title(const OLED_String_Group* oled_string_group)
 	OLED_Clear();
 	OLED_ShowString(0, 0, (uint8_t*)oled_string_group->sin_k, 16);
 	OLED_ShowString(0, 2, (uint8_t*)oled_string_group->vrms, 16);
+	OLED_ShowString(0, 4, (uint8_t*)oled_string_group->irms, 16);
 }
 
 void display_setting_page_title(const OLED_String_Group* oled_string_group)
@@ -624,11 +652,14 @@ void display_info(const V_Ctrl_TypeDef* v_ctrl)
 {
 	static char sin_k[8];
 	static char v_rms[8];
+	static char i_rms[8];
 	
 	sprintf(sin_k, "%.3f", v_ctrl->sin_k);
 	sprintf(v_rms, "%.3f", v_ctrl->Vrms);
+	sprintf(i_rms, "%.3f", v_ctrl->Irms);
 	OLED_ShowString(50, 0, (uint8_t *)sin_k, 16);
 	OLED_ShowString(50, 2, (uint8_t *)v_rms, 16);
+	OLED_ShowString(50, 4, (uint8_t *)i_rms, 16);
 }
 
 void display_array(const OLED_STATE* oled_state)
@@ -703,7 +734,7 @@ void display_setting_info(V_Ctrl_TypeDef* v_ctrl)
 	sprintf(kp, "%.2f", v_ctrl->kp);
 	sprintf(ki, "%.2f", v_ctrl->ki);
 	sprintf(vtar, "%.1f", v_ctrl->Vtar);
-	sprintf(kv, "%d", v_ctrl->kv);
+	sprintf(kv, "% d", v_ctrl->kv);
 	sprintf(w0, "%.2f", v_ctrl->w0);
 	OLED_ShowString(50, 0, (uint8_t *)kp, 12);
 	OLED_ShowString(50, 1, (uint8_t *)ki, 12);
