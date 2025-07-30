@@ -146,7 +146,7 @@ const OLED_String_Group oled_string_group = {
 	.ki			= "   ki:",
 	.vtar		= "V_Tar:",
 	.kv			= "   kv:",
-	.w0			= "   W0:"
+	.w0			= "   f:"
 };
 
 volatile uint8_t dma_flag = 0;
@@ -464,7 +464,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		static Index_TypeDef INDEX = {0};
 		static Duty_TypeDef DUTY = {0};
 		
-		w0t += v_ctrl.w0 * 0.0001f; 
+		w0t += v_ctrl.w0*2*PI * 1/60000; 
 		if(w0t > 2*PI) w0t -= 2*PI;
 		else if(w0t < 0) w0t += 2*PI;
 		
@@ -486,19 +486,19 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 
 void get_index(Index_TypeDef* index, float w0t)
 {
-	index->index_raw = (uint16_t)roundf(w0t / (2.0f * PI) * 600);
+	index->index_raw = (uint16_t)roundf(w0t / (2.0f * PI) * 1200);
 	index->index1 = index->index_raw;
-	index->index2 = (index->index_raw + 200) % 600;
-	index->index3 = (index->index_raw + 400) % 600;
+	index->index2 = (index->index_raw + 400) % 1200;
+	index->index3 = (index->index_raw + 800) % 1200;
 
 	return;
 }
 
 void get_duty(Index_TypeDef* index, Duty_TypeDef* duty, V_Ctrl_TypeDef* v_ctrl)
 {
-	duty->duty1 = v_ctrl->sin_k * (sin_table[index->index1] + harmonic3_table[index->index1] / 6.0f) + 500;
-	duty->duty2 = v_ctrl->sin_k * (sin_table[index->index2] + harmonic3_table[index->index2] / 6.0f) + 500;
-	duty->duty3 = v_ctrl->sin_k * (sin_table[index->index3] + harmonic3_table[index->index3] / 6.0f) + 500;
+	duty->duty1 = v_ctrl->sin_k * (sin_table[index->index1] + harmonic3_table[index->index1] / 6.0f) + 1050;
+	duty->duty2 = v_ctrl->sin_k * (sin_table[index->index2] + harmonic3_table[index->index2] / 6.0f) + 1050;
+	duty->duty3 = v_ctrl->sin_k * (sin_table[index->index3] + harmonic3_table[index->index3] / 6.0f) + 1050;
 	
 	return;
 }
@@ -558,7 +558,7 @@ void V_Ctrl_Init(V_Ctrl_TypeDef* v_ctrl)
 	if(*(uint32_t*)&v_ctrl->w0 != 0xFFFFFFFF)
 			v_ctrl->w0 = w0_flash;
 	else
-			v_ctrl->w0 = 100.0f * PI;
+			v_ctrl->w0 = 50;
 
     v_ctrl->ki = 0.01f;
 }
@@ -596,8 +596,8 @@ void v_pid_update(V_Ctrl_TypeDef* v_ctrl)
 	v_ctrl->sin_k += v_ctrl->kp * (v_ctrl->err - v_ctrl->err_prev) + v_ctrl->ki * v_ctrl->err;
 
 	// 限幅处理
-	if (v_ctrl->sin_k < 0.05f) v_ctrl->sin_k = 0.05f;
-	if (v_ctrl->sin_k > 0.95f) v_ctrl->sin_k = 0.95f;
+	if (v_ctrl->sin_k < 0.3f) v_ctrl->sin_k = 0.3f;
+	if (v_ctrl->sin_k > 0.7f) v_ctrl->sin_k = 0.7f;
 
 	v_ctrl->err_prev = v_ctrl->err;
 }
