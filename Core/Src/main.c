@@ -35,11 +35,16 @@
 #include <stdio.h>
 #include "button.h"
 #include "flash.h"
+#include "filter.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 #define DMA_SIZE 1600
+#define PI 3.1415926f
+#define V_TAR_DEF 12.0f
+#define FLASH_PARAM_ADDR  ((uint32_t)0x08060000)
+#define ADC_FILTER_SIZE 10
 
 typedef struct
 {
@@ -66,6 +71,7 @@ typedef struct
 
 typedef struct
 {
+	float v_filter_buf[DMA_SIZE/(2*ADC_FILTER_SIZE)];
 	uint16_t v_buf[DMA_SIZE/2];
 	uint16_t i_buf[DMA_SIZE/2];
 	float Vrms;
@@ -125,9 +131,7 @@ typedef struct
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define PI 3.1415926f
-#define V_TAR_DEF 12.0f;
-#define FLASH_PARAM_ADDR  ((uint32_t)0x08060000)
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -316,7 +320,7 @@ int main(void)
 		
 		//下箭头
 		if(Button_GetEvent(&btn2) == BUTTON_EVENT_CLICK)
-		{
+ 		{
 			
 			if(oled_state.page_num == setting_page)
 			{	
@@ -569,7 +573,7 @@ void V_Ctrl_Init(V_Ctrl_TypeDef* v_ctrl)
     v_ctrl->ki = 0.01f;
 }
 void split_buf(V_Ctrl_TypeDef* v_ctrl)
-{
+{	
 	//将DMA采样电压分为I和V
 	for(int i=0; i<DMA_SIZE; i++)
 	{
@@ -582,39 +586,54 @@ void split_buf(V_Ctrl_TypeDef* v_ctrl)
 			v_ctrl->i_buf[i/2] = dma_buf[i];
 		}
 	}
+	int filter_block = 0;
+    for (int i = 0; i + ADC_FILTER_SIZE <= DMA_SIZE/2; i += ADC_FILTER_SIZE)
+    {
+        v_ctrl->v_filter_buf[filter_block++] = DMA_U16_Filter_ClippedAverage_MedianBase(&v_ctrl->v_buf[i], ADC_FILTER_SIZE, 600);
+    }
+
 }
 void calculate_aver(V_Ctrl_TypeDef* v_ctrl)
 {
 	//计算平均值（偏置）
 	v_ctrl->Vavr = 0;
-	for(int i=0; i<(DMA_SIZE/2); i++)
-	{
-			float v = v_ctrl->v_buf[i] * 3.3f / 4096.0f;
-			v_ctrl->Vavr += v;
-			float i_v = v_ctrl->i_buf[i] * 3.3f / 4096.0f;
-			v_ctrl->Iavr += i_v;
-	}
-	v_ctrl->Vavr /= (DMA_SIZE/2);
-	v_ctrl->Iavr /= (DMA_SIZE/2);
+	int block_count = DMA_SIZE / 2 / ADC_FILTER_SIZE;
+
+    for (int i = 0; i < block_count; i++) {
+        v_ctrl->Vavr += v_ctrl->v_filter_buf[i];
+    }
+
+    for (int i = 0; i < DMA_SIZE / 2; i++) {
+        float i_v = v_ctrl->i_buf[i] * 3.3f / 4096.0f;
+        v_ctrl->Iavr += i_v;
+    }
+
+    v_ctrl->Vavr /= block_count;
+    v_ctrl->Iavr /= (DMA_SIZE / 2);
 }
 
 void calculate_rms(V_Ctrl_TypeDef* v_ctrl)
 {
 	//去偏置再计算 RMS
 	v_ctrl->Vrms = 0;
-	for(int i=0; i<(DMA_SIZE/2); i++)
-	{
-			float v = v_ctrl->v_buf[i] * 3.3f / 4096.0f;
-			float ac = v - v_ctrl->Vavr;
-			v_ctrl->Vrms += (ac * ac);
-			//计算电流RMS
-			float i_v = v_ctrl->i_buf[i] * 3.3f / 4096.0f;
-			ac = i_v - v_ctrl->Iavr;
-			v_ctrl->Irms += (ac * ac);
-	}
-	v_ctrl->Vrms = sqrtf(v_ctrl->Vrms/(DMA_SIZE/2));
-	v_ctrl->Vrms = v_ctrl->Vrms * v_ctrl->kv; //电压RMS乘以kv系数
-	v_ctrl->Irms = sqrtf(v_ctrl->Irms/(DMA_SIZE/2));
+    v_ctrl->Irms = 0;
+
+    int block_count = DMA_SIZE / 2 / ADC_FILTER_SIZE;
+
+    for (int i = 0; i < block_count; i++) {
+        float ac = v_ctrl->v_filter_buf[i] - v_ctrl->Vavr;
+        v_ctrl->Vrms += (ac * ac);
+    }
+
+    for (int i = 0; i < DMA_SIZE / 2; i++) {
+        float i_v = v_ctrl->i_buf[i] * 3.3f / 4096.0f;
+        float ac = i_v - v_ctrl->Iavr;
+        v_ctrl->Irms += (ac * ac);
+    }
+
+    v_ctrl->Vrms = sqrtf(v_ctrl->Vrms / block_count);
+    v_ctrl->Vrms = v_ctrl->Vrms * v_ctrl->kv;
+    v_ctrl->Irms = sqrtf(v_ctrl->Irms / (DMA_SIZE / 2));
 }
 
 void v_pid_update(V_Ctrl_TypeDef* v_ctrl)
@@ -623,8 +642,8 @@ void v_pid_update(V_Ctrl_TypeDef* v_ctrl)
 	v_ctrl->sin_k += v_ctrl->kp * (v_ctrl->err - v_ctrl->err_prev) + v_ctrl->ki * v_ctrl->err;
 
 	// 限幅处理
-	if (v_ctrl->sin_k < 0.3f) v_ctrl->sin_k = 0.3f;
-	if (v_ctrl->sin_k > 0.7f) v_ctrl->sin_k = 0.7f;
+	if (v_ctrl->sin_k < 0.05f) v_ctrl->sin_k = 0.05f;
+	if (v_ctrl->sin_k > 0.95f) v_ctrl->sin_k = 0.95f;
 
 	v_ctrl->err_prev = v_ctrl->err;
 }

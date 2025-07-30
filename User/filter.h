@@ -15,6 +15,7 @@ float DMA_U16_Filter_Average(const uint16_t* data, uint16_t len);
 // 中值滤波
 float DMA_U16_Filter_Median(const uint16_t* data, uint16_t len);
 
+float DMA_U16_Filter_ClippedAverage_MedianBase(const uint16_t* data, uint16_t len, uint16_t limit);
 // 限幅平均滤波（过滤偏差过大的点）
 float DMA_U16_Filter_ClippedAverage(const uint16_t* data, uint16_t len, uint16_t limit);
 

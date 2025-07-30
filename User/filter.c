@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+
 // ==== 均值滤波 ====
 float DMA_U16_Filter_Average(const uint16_t* data, uint16_t len)
 {
@@ -14,7 +15,7 @@ float DMA_U16_Filter_Average(const uint16_t* data, uint16_t len)
 // ==== 中值滤波 ====
 static int compare_u16(const void* a, const void* b)
 {
-    return ((*(uint16_t*)a) - (*(uint16_t*)b))*3.3/4096;
+    return (*(uint16_t*)a) - (*(uint16_t*)b); 
 }
 
 float DMA_U16_Filter_Median(const uint16_t* data, uint16_t len)
@@ -27,9 +28,45 @@ float DMA_U16_Filter_Median(const uint16_t* data, uint16_t len)
     qsort(temp, len, sizeof(uint16_t), compare_u16);
 
     if (len % 2 == 0)
-        return (temp[len / 2 - 1] + temp[len / 2]) / 2.0f * 3.3 / 4096;
+        return (temp[len / 2 - 1] + temp[len / 2]) / 2.0f * 3.3f / 4096.0f;
     else
-        return (float)temp[len / 2] * 3.3 / 4096;
+        return (float)temp[len / 2] * 3.3f / 4096.0f;
+}
+
+float DMA_U16_Filter_ClippedAverage_MedianBase(const uint16_t* data, uint16_t len, uint16_t limit)
+{
+    if (len == 0) return 0.0f;
+
+    // 第一步：计算中值 base
+    uint16_t temp[10];
+    for (uint16_t i = 0; i < len; i++) temp[i] = data[i];
+
+
+    // 插入排序
+    for (uint16_t i = 1; i < 10; i++) {
+        uint16_t key = temp[i];
+        int j = i - 1;
+        while (j >= 0 && temp[j] > key) {
+            temp[j + 1] = temp[j];
+            j--;
+        }
+        temp[j + 1] = key;
+    }
+    // 取中值（长度为10是偶数，取中间两数平均）
+    uint16_t base = (temp[4] + temp[5]) / 2;
+
+    // 第二步：限幅平均
+    uint32_t sum = 0;
+    uint16_t count = 0;
+    for (uint16_t i = 0; i < len; i++) {
+        if (abs((int)data[i] - base) <= limit) {
+            sum += data[i];
+            count++;
+        }
+    }
+
+    if (count == 0) return (float)base * 3.3f / 4096.0f;
+    return ((float)sum / (float)count) * 3.3f / 4096.0f;
 }
 
 // ==== 限幅平均 ====
