@@ -243,7 +243,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_USART1_UART_Init();
+ // MX_USART1_UART_Init();
   MX_TIM5_Init();
   MX_ADC1_Init();
   MX_TIM8_Init();
@@ -285,15 +285,7 @@ int main(void)
 		button_group_update();
 		button_ui_update();
 		
-		if(dma_flag == 1)
-    	{
-      dma_flag = 0;
-			split_buf(&v_ctrl);
-			calculate_aver(&v_ctrl);
-			calculate_rms(&v_ctrl);
-			
-			v_pid_update(&v_ctrl); 
-			if(tim2_flag){
+		if(tim2_flag){
 				tim2_flag =0;
 				if(oled_state.page_num == info_page) display_info(&v_ctrl);
 				if(oled_state.page_num == in_setting)
@@ -304,9 +296,18 @@ int main(void)
 					sprintf(v_rms, "%.3f", v_ctrl.Vrms);
 					OLED_ShowString(50, 6, (uint8_t *)v_rms, 12);
 				}
-			}
+		}
+		
+		if(dma_flag == 1)
+		{
+			dma_flag = 0;
+			split_buf(&v_ctrl);
+			calculate_aver(&v_ctrl);
+			calculate_rms(&v_ctrl);
+			
+			v_pid_update(&v_ctrl); 
 			HAL_ADC_Start_DMA(&hadc1, (uint32_t*)dma_buf, DMA_SIZE);
-    	}
+		}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -444,33 +445,33 @@ void V_Ctrl_Init(V_Ctrl_TypeDef* v_ctrl)
 {
 	//统一赋0，需要改的单独列出来改
 	memset((void *)v_ctrl, 0x0, sizeof(V_Ctrl_TypeDef));
-	uint32_t kv_flash = *(uint32_t*)(FLASH_PARAM_ADDR + 0);
-	uint32_t   Vtar_flash = *(uint32_t*)(FLASH_PARAM_ADDR + 4);
-	uint32_t   kp_flash   = *(uint32_t*)(FLASH_PARAM_ADDR + 8);
-	uint32_t   ki_flash   = *(uint32_t*)(FLASH_PARAM_ADDR + 12);
-	uint32_t   w0_flash   = *(uint32_t*)(FLASH_PARAM_ADDR + 16);
+	float kv_flash = *(float*)(FLASH_PARAM_ADDR + 0);
+	float   Vtar_flash = *(float*)(FLASH_PARAM_ADDR + 4);
+	float   kp_flash   = *(float*)(FLASH_PARAM_ADDR + 8);
+	float   ki_flash   = *(float*)(FLASH_PARAM_ADDR + 12);
+	float   w0_flash   = *(float*)(FLASH_PARAM_ADDR + 16);
 	v_ctrl->sin_k = 0.2f;
 	
-	if (kv_flash != 0xFFFFFFFF)
-			v_ctrl->kv = *(float*)kv_flash;
+	if (*(uint32_t*)&kv_flash != 0xFFFFFFF)
+			v_ctrl->kv = kv_flash;
 	else
 			v_ctrl->kv = 50.0f;
-	if (Vtar_flash != 0xFFFFFFFF)
-			v_ctrl->Vtar = *(float*)Vtar_flash;
+	if (*(uint32_t*)&Vtar_flash != 0xFFFFFFFF)
+			v_ctrl->Vtar = Vtar_flash;
 	else
 			v_ctrl->Vtar = V_TAR_DEF;
 
-	if (kp_flash != 0xFFFFFFFF)
-			v_ctrl->kp = *(float*)kp_flash;
+	if (*(uint32_t*)&kp_flash != 0xFFFFFFFF)
+			v_ctrl->kp = kp_flash;
 	else
 			v_ctrl->kp = 0.02f;
 
-	if (ki_flash != 0xFFFFFFFF)
-			v_ctrl->ki = *(float*)ki_flash;
+	if (*(uint32_t*)&ki_flash != 0xFFFFFFFF)
+			v_ctrl->ki = ki_flash;
 	else
 			v_ctrl->ki = 0.01f;
-	if(w0_flash != 0xFFFFFFFF)
-			v_ctrl->w0 = *(float*)w0_flash;
+	if(*(uint32_t*)&v_ctrl->w0 != 0xFFFFFFFF)
+			v_ctrl->w0 = w0_flash;
 	else
 			v_ctrl->w0 = 50;
 }
@@ -716,11 +717,11 @@ void button_ui_update(void)
 			{
 				oled_state.page_num = setting_page;
 				display_array(&oled_state);
-				WriteFlashData(FLASH_PARAM_ADDR, (uint8_t *)&(v_ctrl.kv), sizeof(float));
-				WriteFlashData((FLASH_PARAM_ADDR+4),(uint8_t *)&(v_ctrl.Vtar), sizeof(float));
-				WriteFlashData((FLASH_PARAM_ADDR+8),(uint8_t *)&(v_ctrl.kp), sizeof(float));
-				WriteFlashData((FLASH_PARAM_ADDR+12),(uint8_t *)&(v_ctrl.ki), sizeof(float));
-				WriteFlashData((FLASH_PARAM_ADDR+16),(uint8_t *)&(v_ctrl.w0), sizeof(float));
+				WriteFlashData(FLASH_PARAM_ADDR, (uint8_t *)&(v_ctrl.kv), sizeof(uint32_t));
+				WriteFlashData((FLASH_PARAM_ADDR+4),(uint8_t *)&(v_ctrl.Vtar), sizeof(uint32_t));
+				WriteFlashData((FLASH_PARAM_ADDR+8),(uint8_t *)&(v_ctrl.kp), sizeof(uint32_t));
+				WriteFlashData((FLASH_PARAM_ADDR+12),(uint8_t *)&(v_ctrl.ki), sizeof(uint32_t));
+				WriteFlashData((FLASH_PARAM_ADDR+16),(uint8_t *)&(v_ctrl.w0), sizeof(uint32_t));
 			}		
 		}
 		
