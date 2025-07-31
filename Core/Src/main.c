@@ -60,6 +60,9 @@ typedef struct
 	uint16_t duty1;
 	uint16_t duty2;
 	uint16_t duty3;
+	uint16_t dutya;
+	uint16_t dutyb;
+	uint16_t dutyc;
 } Duty_TypeDef;
 
 typedef struct
@@ -158,6 +161,8 @@ const OLED_String_Group oled_string_group = {
 
 volatile uint8_t dma_flag = 0;
 volatile uint8_t tim2_flag = 0;
+volatile uint16_t tim2_count = 0;
+volatile uint8_t tim_1s = 0;
 uint16_t dma_buf[DMA_SIZE] = {0};
 
 
@@ -289,6 +294,12 @@ int main(void)
 		button_ui_update();
 		
 		if(tim2_flag){
+				if(tim2_count >= 100&& tim_1s == 0 )
+				{
+					tim_1s = 1;
+					tim2_count = 0;
+				}
+				
 				tim2_flag =0;
 				if(oled_state.page_num == info_page) display_info(&v_ctrl);
 				if(oled_state.page_num == in_setting)
@@ -390,6 +401,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	if(htim->Instance == TIM2)
 	{
 		tim2_flag = 1;
+		if(tim_1s == 0)
+		{
+			tim2_count ++ ;
+		}
+		
 	}
 }
 
@@ -415,11 +431,29 @@ void get_index(Index_TypeDef* index, float w0t)
 
 void get_duty(Index_TypeDef* index, Duty_TypeDef* duty, V_Ctrl_TypeDef* v_ctrl)
 {
-	duty->duty1 = v_ctrl->sin_k * (sin_table[index->index1] + harmonic3_table[index->index1] / 6.0f) + 1050;
-	duty->duty2 = v_ctrl->sin_k * (sin_table[index->index2] + harmonic3_table[index->index2] / 6.0f) + 1050;
-	duty->duty3 = v_ctrl->sin_k * (sin_table[index->index3] + harmonic3_table[index->index3] / 6.0f) + 1050;
+	if(tim_1s == 0)
+	{
+		duty->duty1 =v_ctrl->sin_k * (sin_table[index->index1] + harmonic3_table[index->index1] / 6.0f) + 1050;
+		duty->duty2 = v_ctrl->sin_k* (sin_table[index->index2] + harmonic3_table[index->index2] / 6.0f) + 1050;
+		duty->duty3 =v_ctrl->sin_k * (sin_table[index->index3] + harmonic3_table[index->index3] / 6.0f) + 1050;
+		
+	//	duty->duty1 = 0.7  * (sin_table[index->index1] + harmonic3_table[index->index1] / 6.0f) + 1050;
+	//	duty->duty2 = 0.7  * (sin_table[index->index2] + harmonic3_table[index->index2] / 6.0f) + 1050;
+	//	duty->duty3 = 0.7  * (sin_table[index->index3] + harmonic3_table[index->index3] / 6.0f) + 1050;
+
+		duty->dutya =  v_ctrl->sin_k * (sin_table[index->index1] + harmonic3_table[index->index1] / 6.0f) + 1050;
+		duty->dutyb =  v_ctrl->sin_k* (sin_table[index->index2] + harmonic3_table[index->index2] / 6.0f) + 1050;
+		duty->dutyc =  v_ctrl->sin_k * (sin_table[index->index3] + harmonic3_table[index->index3] / 6.0f) + 1050;
+	}
+	else {
+		duty->duty1 = v_ctrl->sin_k  * (sin_table[index->index1] + harmonic3_table[index->index1] / 6.0f) + 1050;
+		duty->duty2 = v_ctrl->sin_k  * (sin_table[index->index2] + harmonic3_table[index->index2] / 6.0f) + 1050;
+		duty->duty3 = v_ctrl->sin_k  * (sin_table[index->index3] + harmonic3_table[index->index3] / 6.0f) + 1050;
+		
+		duty->dutya = 0.4*(sin_table[index->index1] + harmonic3_table[index->index1] / 6.0f) + 1050;
+		duty->dutyb = 0.4*(sin_table[index->index2] + harmonic3_table[index->index2] / 6.0f) + 1050;
+	}
 	
-	return;
 }
 
 
@@ -430,9 +464,9 @@ void set_compare(Duty_TypeDef* duty)
 	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_3, duty->duty3);
 	//开启tim1
 	
-	__HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, duty->duty1);
-	__HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_2, duty->duty2);
-	__HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_3, duty->duty3);
+	__HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, duty->dutya);
+	__HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_2, duty->dutyb);
+	__HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_3, duty->dutyc);
 	
 	return;
 }
