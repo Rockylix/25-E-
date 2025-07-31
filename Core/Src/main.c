@@ -243,21 +243,23 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
- // MX_USART1_UART_Init();
+  MX_USART1_UART_Init();
   MX_TIM5_Init();
   MX_ADC1_Init();
   MX_TIM8_Init();
   MX_I2C1_Init();
   MX_TIM2_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 	
 	//初始化PID控制
 	V_Ctrl_Init(&v_ctrl);
 	
-	//开启PWM波
+	//开启PWM波                                         
 	pwm_start();
 	
 	//用来中断对w0积分
+	HAL_GPIO_WritePin(GPIOB,GPIO_PIN_2,GPIO_PIN_SET);
 	HAL_TIM_Base_Start_IT(&htim5);
 	
 //	HAL_TIM_Base_Start_IT(&htim8);
@@ -764,11 +766,11 @@ void button_ui_update(void)
 				display_setting_info(&v_ctrl);
 			}
 		}
-		else if (Button_GetEvent(&btn2) == BUTTON_EVENT_LONG_PRESS)
-		{
-			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_2);
-		}
-		
+//		if (Button_GetEvent(&btn2) == BUTTON_EVENT_LONG_PRESS)
+//		{
+//			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_2);
+//		}
+//		
 		//上箭头
 		if(Button_GetEvent(&btn3) == BUTTON_EVENT_CLICK)
 		{
