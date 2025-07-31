@@ -3,7 +3,7 @@
 <title>Static Call Graph - [Three\Three.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image Three\Three.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6220000: Last Updated: Thu Jul 31 14:10:29 2025
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6220000: Last Updated: Thu Jul 31 16:09:20 2025
 <BR><P>
 <H3>Maximum Stack Usage =        324 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -271,7 +271,7 @@ Global Symbols
 <P><STRONG><a name="[125]"></a>__rt_entry_postsh_1</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, __rtentry2.o(.ARM.Collect$$rtentry$$00000009))
 
 <P><STRONG><a name="[71]"></a>__rt_entry_main</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, __rtentry2.o(.ARM.Collect$$rtentry$$0000000D))
-<BR><BR>[Stack]<UL><LI>Max Depth = 288 + Unknown Stack Size
+<BR><BR>[Stack]<UL><LI>Max Depth = 296 + Unknown Stack Size
 <LI>Call Chain = __rt_entry_main &rArr; main &rArr; button_ui_update &rArr; display_setting_info &rArr; OLED_ShowString &rArr; OLED_ShowChar &rArr; HAL_I2C_Mem_Write &rArr; I2C_RequestMemoryWrite &rArr; I2C_WaitOnMasterAddressFlagUntilTimeout
 </UL>
 <BR>[Calls]<UL><LI><a href="#[72]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
@@ -727,7 +727,7 @@ Global Symbols
 <BR><BR>[Called By]<UL><LI><a href="#[e4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;button_ui_update
 </UL>
 
-<P><STRONG><a name="[90]"></a>Button_Init</STRONG> (Thumb, 30 bytes, Stack size 8 bytes, button.o(.text.Button_Init))
+<P><STRONG><a name="[90]"></a>Button_Init</STRONG> (Thumb, 32 bytes, Stack size 8 bytes, button.o(.text.Button_Init))
 <BR><BR>[Stack]<UL><LI>Max Depth = 8<LI>Call Chain = Button_Init
 </UL>
 <BR>[Calls]<UL><LI><a href="#[91]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GetTick
@@ -894,10 +894,6 @@ Global Symbols
 <BR><BR>[Called By]<UL><LI><a href="#[92]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Button_Update
 </UL>
 
-<P><STRONG><a name="[ec]"></a>HAL_GPIO_TogglePin</STRONG> (Thumb, 16 bytes, Stack size 0 bytes, stm32f4xx_hal_gpio.o(.text.HAL_GPIO_TogglePin))
-<BR><BR>[Called By]<UL><LI><a href="#[e4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;button_ui_update
-</UL>
-
 <P><STRONG><a name="[cc]"></a>HAL_GPIO_WritePin</STRONG> (Thumb, 10 bytes, Stack size 0 bytes, stm32f4xx_hal_gpio.o(.text.HAL_GPIO_WritePin))
 <BR><BR>[Called By]<UL><LI><a href="#[cb]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_GPIO_Init
 <LI><a href="#[72]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
@@ -1059,8 +1055,8 @@ Global Symbols
 <LI><a href="#[d4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_TIM5_Init
 </UL>
 
-<P><STRONG><a name="[ee]"></a>HAL_TIMEx_PWMN_Start</STRONG> (Thumb, 254 bytes, Stack size 0 bytes, stm32f4xx_hal_tim_ex.o(.text.HAL_TIMEx_PWMN_Start))
-<BR><BR>[Called By]<UL><LI><a href="#[72]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
+<P><STRONG><a name="[ef]"></a>HAL_TIMEx_PWMN_Start</STRONG> (Thumb, 254 bytes, Stack size 0 bytes, stm32f4xx_hal_tim_ex.o(.text.HAL_TIMEx_PWMN_Start))
+<BR><BR>[Called By]<UL><LI><a href="#[ec]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;pwm_start
 </UL>
 
 <P><STRONG><a name="[b3]"></a>HAL_TIM_Base_Init</STRONG> (Thumb, 90 bytes, Stack size 8 bytes, stm32f4xx_hal_tim.o(.text.HAL_TIM_Base_Init))
@@ -1083,7 +1079,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[b3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_Base_Init
 </UL>
 
-<P><STRONG><a name="[ef]"></a>HAL_TIM_Base_Start_IT</STRONG> (Thumb, 170 bytes, Stack size 0 bytes, stm32f4xx_hal_tim.o(.text.HAL_TIM_Base_Start_IT))
+<P><STRONG><a name="[ed]"></a>HAL_TIM_Base_Start_IT</STRONG> (Thumb, 170 bytes, Stack size 0 bytes, stm32f4xx_hal_tim.o(.text.HAL_TIM_Base_Start_IT))
 <BR><BR>[Called By]<UL><LI><a href="#[72]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
@@ -1155,11 +1151,11 @@ Global Symbols
 <BR><BR>[Called By]<UL><LI><a href="#[b7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_IRQHandler
 </UL>
 
-<P><STRONG><a name="[ed]"></a>HAL_TIM_PWM_Start</STRONG> (Thumb, 270 bytes, Stack size 0 bytes, stm32f4xx_hal_tim.o(.text.HAL_TIM_PWM_Start))
-<BR><BR>[Called By]<UL><LI><a href="#[72]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
+<P><STRONG><a name="[ee]"></a>HAL_TIM_PWM_Start</STRONG> (Thumb, 270 bytes, Stack size 0 bytes, stm32f4xx_hal_tim.o(.text.HAL_TIM_PWM_Start))
+<BR><BR>[Called By]<UL><LI><a href="#[ec]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;pwm_start
 </UL>
 
-<P><STRONG><a name="[bb]"></a>HAL_TIM_PeriodElapsedCallback</STRONG> (Thumb, 400 bytes, Stack size 24 bytes, main.o(.text.HAL_TIM_PeriodElapsedCallback))
+<P><STRONG><a name="[bb]"></a>HAL_TIM_PeriodElapsedCallback</STRONG> (Thumb, 416 bytes, Stack size 24 bytes, main.o(.text.HAL_TIM_PeriodElapsedCallback))
 <BR><BR>[Stack]<UL><LI>Max Depth = 56<LI>Call Chain = HAL_TIM_PeriodElapsedCallback &rArr; __hardfp_roundf &rArr; _frnd &rArr; __fpl_fnaninf
 </UL>
 <BR>[Calls]<UL><LI><a href="#[c2]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__hardfp_roundf
@@ -1431,12 +1427,11 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[e4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;button_ui_update
 </UL>
 
-<P><STRONG><a name="[e4]"></a>button_ui_update</STRONG> (Thumb, 984 bytes, Stack size 16 bytes, main.o(.text.button_ui_update))
-<BR><BR>[Stack]<UL><LI>Max Depth = 248 + Unknown Stack Size
+<P><STRONG><a name="[e4]"></a>button_ui_update</STRONG> (Thumb, 1128 bytes, Stack size 24 bytes, main.o(.text.button_ui_update))
+<BR><BR>[Stack]<UL><LI>Max Depth = 256 + Unknown Stack Size
 <LI>Call Chain = button_ui_update &rArr; display_setting_info &rArr; OLED_ShowString &rArr; OLED_ShowChar &rArr; HAL_I2C_Mem_Write &rArr; I2C_RequestMemoryWrite &rArr; I2C_WaitOnMasterAddressFlagUntilTimeout
 </UL>
-<BR>[Calls]<UL><LI><a href="#[ec]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_TogglePin
-<LI><a href="#[eb]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;display_setting_info
+<BR>[Calls]<UL><LI><a href="#[eb]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;display_setting_info
 <LI><a href="#[e1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;WriteFlashData
 <LI><a href="#[e7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;display_array
 <LI><a href="#[e6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;display_star
@@ -1477,8 +1472,8 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[e4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;button_ui_update
 </UL>
 
-<P><STRONG><a name="[72]"></a>main</STRONG> (Thumb, 3048 bytes, Stack size 40 bytes, main.o(.text.main))
-<BR><BR>[Stack]<UL><LI>Max Depth = 288 + Unknown Stack Size
+<P><STRONG><a name="[72]"></a>main</STRONG> (Thumb, 2996 bytes, Stack size 40 bytes, main.o(.text.main))
+<BR><BR>[Stack]<UL><LI>Max Depth = 296 + Unknown Stack Size
 <LI>Call Chain = main &rArr; button_ui_update &rArr; display_setting_info &rArr; OLED_ShowString &rArr; OLED_ShowChar &rArr; HAL_I2C_Mem_Write &rArr; I2C_RequestMemoryWrite &rArr; I2C_WaitOnMasterAddressFlagUntilTimeout
 </UL>
 <BR>[Calls]<UL><LI><a href="#[95]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DMA_U16_Filter_ClippedAverage_MedianBase
@@ -1490,10 +1485,9 @@ Global Symbols
 <LI><a href="#[d8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OLED_Display_On
 <LI><a href="#[d9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OLED_Init
 <LI><a href="#[9d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_ADC_Start_DMA
-<LI><a href="#[ef]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_Base_Start_IT
+<LI><a href="#[ed]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_Base_Start_IT
 <LI><a href="#[cc]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_WritePin
-<LI><a href="#[ee]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIMEx_PWMN_Start
-<LI><a href="#[ed]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_PWM_Start
+<LI><a href="#[ec]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;pwm_start
 <LI><a href="#[ce]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_TIM1_Init
 <LI><a href="#[d2]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_TIM2_Init
 <LI><a href="#[cd]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_I2C1_Init
@@ -1510,6 +1504,15 @@ Global Symbols
 <LI><a href="#[78]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2sprintf
 </UL>
 <BR>[Called By]<UL><LI><a href="#[71]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__rt_entry_main
+</UL>
+
+<P><STRONG><a name="[ec]"></a>pwm_start</STRONG> (Thumb, 118 bytes, Stack size 8 bytes, main.o(.text.pwm_start))
+<BR><BR>[Stack]<UL><LI>Max Depth = 8<LI>Call Chain = pwm_start
+</UL>
+<BR>[Calls]<UL><LI><a href="#[ef]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIMEx_PWMN_Start
+<LI><a href="#[ee]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_PWM_Start
+</UL>
+<BR>[Called By]<UL><LI><a href="#[72]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
 <P><STRONG><a name="[81]"></a>_btod_d2e</STRONG> (Thumb, 62 bytes, Stack size 0 bytes, btod.o(CL$$btod_d2e))

@@ -42,7 +42,7 @@
 /* USER CODE BEGIN PTD */
 #define DMA_SIZE 1600
 #define PI 3.1415926f
-#define V_TAR_DEF 12.0f
+#define V_TAR_DEF 32.0f
 #define FLASH_PARAM_ADDR  ((uint32_t)0x08060000)
 #define ADC_FILTER_SIZE 10
 
@@ -167,6 +167,7 @@ Button btn0 = {0};
 Button btn1 = {0};
 Button btn2 = {0};
 Button btn3 = {0};
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -265,6 +266,7 @@ int main(void)
 //	HAL_TIM_Base_Start_IT(&htim8);
 	
 	//用来中断显示屏幕
+//	WriteFlashData(FLASH_PARAM_ADDR, (uint8_t *)0xffff, sizeof(uint32_t));
 	HAL_TIM_Base_Start_IT(&htim2);
 	
 	//开启ADC采样
@@ -275,7 +277,6 @@ int main(void)
 	
 	//初始化按键
 	button_group_init();
-//	WriteFlashData(FLASH_PARAM_ADDR, (uint8_t *)0xFFFFFFFF, sizeof(float));
 	
 	
   /* USER CODE END 2 */
@@ -427,6 +428,11 @@ void set_compare(Duty_TypeDef* duty)
 	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, duty->duty1);
 	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, duty->duty2);
 	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_3, duty->duty3);
+	//开启tim1
+	
+	__HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, duty->duty1);
+	__HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_2, duty->duty2);
+	__HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_3, duty->duty3);
 	
 	return;
 }
@@ -439,6 +445,14 @@ void pwm_start(void)
 	HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_3);
+	
+	//开启tim1 整流pwm
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
 	
 	return;
 }
@@ -454,10 +468,10 @@ void V_Ctrl_Init(V_Ctrl_TypeDef* v_ctrl)
 	float   w0_flash   = *(float*)(FLASH_PARAM_ADDR + 16);
 	v_ctrl->sin_k = 0.2f;
 	
-	if (*(uint32_t*)&kv_flash != 0xFFFFFFF)
+	if (*(uint32_t*)&kv_flash != 0xFFFFFFFF)
 			v_ctrl->kv = kv_flash;
 	else
-			v_ctrl->kv = 50.0f;
+			v_ctrl->kv = 43.0f;
 	if (*(uint32_t*)&Vtar_flash != 0xFFFFFFFF)
 			v_ctrl->Vtar = Vtar_flash;
 	else
@@ -688,7 +702,11 @@ void button_group_update(void)
 void button_ui_update(void)
 {
 	//*号键
-		if(Button_GetEvent(&btn0) == BUTTON_EVENT_CLICK)
+		ButtonEvent evt0 = Button_GetEvent(&btn0);
+		ButtonEvent evt1 = Button_GetEvent(&btn1);
+		ButtonEvent evt2 = Button_GetEvent(&btn2);
+		ButtonEvent evt3 = Button_GetEvent(&btn3);
+		if(evt0  == BUTTON_EVENT_CLICK)
 		{
 			//切换页面
 			if(oled_state.page_num != in_setting)
@@ -708,7 +726,7 @@ void button_ui_update(void)
 		}
 		
 		//#号键
-		if(Button_GetEvent(&btn1) == BUTTON_EVENT_CLICK)
+		if(evt1 == BUTTON_EVENT_CLICK)
 		{
 			if(oled_state.page_num == setting_page)
 			{
@@ -728,7 +746,7 @@ void button_ui_update(void)
 		}
 		
 		//下箭头
-		if(Button_GetEvent(&btn2) == BUTTON_EVENT_CLICK)
+		if(evt2 == BUTTON_EVENT_CLICK)
  		{
 			
 			if(oled_state.page_num == setting_page)
@@ -766,13 +784,33 @@ void button_ui_update(void)
 				display_setting_info(&v_ctrl);
 			}
 		}
-//		if (Button_GetEvent(&btn2) == BUTTON_EVENT_LONG_PRESS)
-//		{
-//			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_2);
-//		}
-//		
+		else if (evt2== BUTTON_EVENT_LONG_PRESS)
+		{
+			if(oled_state.page_num == in_setting)
+			{
+				switch(oled_state.sel_num)
+				{
+					case sel_kp:
+						v_ctrl.kp -= 0.1f;
+						break;
+					case sel_ki:
+						v_ctrl.ki -= 0.1f;
+						break;
+					case sel_var:
+						v_ctrl.Vtar -= 1.0f;
+						break;
+					case sel_kv:
+						v_ctrl.kv -= 1.0f;
+						break;
+					case sel_w0:
+						v_ctrl.w0 -= 1.0f;
+					  break;
+				}
+				display_setting_info(&v_ctrl);
+			}
+		}
 		//上箭头
-		if(Button_GetEvent(&btn3) == BUTTON_EVENT_CLICK)
+		if(evt3 == BUTTON_EVENT_CLICK)
 		{
 			if(oled_state.page_num == setting_page)
 			{	
@@ -804,31 +842,31 @@ void button_ui_update(void)
 				display_setting_info(&v_ctrl);
 			}
 		}
-//		else if (Button_GetEvent(&btn3) == BUTTON_EVENT_LONG_PRESS)
-//		{
-//			if(oled_state.page_num == in_setting)
-//			{
-//				switch(oled_state.sel_num)
-//				{
-//					case sel_kp:
-//						v_ctrl.kp += 0.1f;
-//						break;
-//					case sel_ki:
-//						v_ctrl.ki += 0.1f;
-//						break;
-//					case sel_var:
-//						v_ctrl.Vtar += 5.0f;
-//						break;
-//					case sel_kv:
-//						v_ctrl.kv += 5.0f;
-//						break;
-//					case sel_w0:
-//						v_ctrl.w0 += 5.0f;
-//					  break;
-//				}
-//				display_setting_info(&v_ctrl);
-//			}
-//		}
+		else if (evt3 == BUTTON_EVENT_LONG_PRESS)
+		{
+			if(oled_state.page_num == in_setting)
+			{
+				switch(oled_state.sel_num)
+				{
+					case sel_kp:
+						v_ctrl.kp += 0.1f;
+						break;
+					case sel_ki:
+						v_ctrl.ki += 0.1f;
+						break;
+					case sel_var:
+						v_ctrl.Vtar += 1.0f;
+						break;
+					case sel_kv:
+						v_ctrl.kv += 1.0f;
+						break;
+					case sel_w0:
+						v_ctrl.w0 += 1.0f;
+					  break;
+				}
+				display_setting_info(&v_ctrl);
+			}
+		}
 }
 
 /* USER CODE END 4 */
