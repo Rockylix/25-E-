@@ -86,7 +86,7 @@ typedef struct
 	float err;
 	float err_prev;
 	float w0;
-	uint8_t kv;
+	float kv;
 } V_Ctrl_TypeDef;
 
 typedef struct
@@ -157,6 +157,7 @@ const OLED_String_Group oled_string_group = {
 };
 
 volatile uint8_t dma_flag = 0;
+volatile uint8_t tim2_flag = 0;
 uint16_t dma_buf[DMA_SIZE] = {0};
 
 
@@ -199,6 +200,7 @@ void display_setting_info(V_Ctrl_TypeDef* v_ctrl);
 /*--------------------按键控制所用函数--------------------------*/
 void button_group_init(void);
 void button_group_update(void);
+void button_ui_update(void);
 
 /*------------flash------------*/
 
@@ -246,6 +248,7 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM8_Init();
   MX_I2C1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 	
 	//初始化PID控制
@@ -257,8 +260,10 @@ int main(void)
 	//用来中断对w0积分
 	HAL_TIM_Base_Start_IT(&htim5);
 	
-	//用来中断对w0积分
-	HAL_TIM_Base_Start_IT(&htim8);
+//	HAL_TIM_Base_Start_IT(&htim8);
+	
+	//用来中断显示屏幕
+	HAL_TIM_Base_Start_IT(&htim2);
 	
 	//开启ADC采样
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)dma_buf, DMA_SIZE);
@@ -268,6 +273,7 @@ int main(void)
 	
 	//初始化按键
 	button_group_init();
+//	WriteFlashData(FLASH_PARAM_ADDR, (uint8_t *)0xFFFFFFFF, sizeof(float));
 	
 	
   /* USER CODE END 2 */
@@ -277,134 +283,28 @@ int main(void)
   while (1)
   {
 		button_group_update();
-		
-		//*号键
-		if(Button_GetEvent(&btn0) == BUTTON_EVENT_CLICK)
-		{
-			//切换页面
-			if(oled_state.page_num != in_setting)
-			{
-				if(oled_state.page_num == 1) oled_state.page_num = 0;
-				else oled_state.page_num ++;
-			}
-
-			//显示页面标题
-			if(oled_state.page_num == info_page) display_info_page_title(&oled_string_group);
-			else if(oled_state.page_num == setting_page)
-			{
-				display_setting_page_title(&oled_string_group);
-				display_setting_info(&v_ctrl);
-				display_array(&oled_state);
-			}
-		}
-		
-		//#号键
-		if(Button_GetEvent(&btn1) == BUTTON_EVENT_CLICK)
-		{
-			if(oled_state.page_num == setting_page)
-			{
-				oled_state.page_num = in_setting;
-				display_star(&oled_state);
-			}
-			else if(oled_state.page_num == in_setting)
-			{
-				oled_state.page_num = setting_page;
-				display_array(&oled_state);
-				WriteFlashData(FLASH_PARAM_ADDR, &(v_ctrl.kv), sizeof(uint8_t));
-				WriteFlashData((FLASH_PARAM_ADDR+4),(uint8_t *)&(v_ctrl.Vtar), sizeof(float));
-				WriteFlashData((FLASH_PARAM_ADDR+8),(uint8_t *)&(v_ctrl.kp), sizeof(float));
-				WriteFlashData((FLASH_PARAM_ADDR+12),(uint8_t *)&(v_ctrl.ki), sizeof(float));
-				WriteFlashData((FLASH_PARAM_ADDR+16),(uint8_t *)&(v_ctrl.w0), sizeof(float));
-			}		
-		}
-		
-		//下箭头
-		if(Button_GetEvent(&btn2) == BUTTON_EVENT_CLICK)
- 		{
-			
-			if(oled_state.page_num == setting_page)
-			{	
-				if(oled_state.sel_num == 4) oled_state.sel_num = 0;
-				else oled_state.sel_num ++;
-				display_array(&oled_state);
-			}
-			else if(oled_state.page_num == in_setting)
-			{
-				switch(oled_state.sel_num)
-				{
-					case sel_kp:
-						v_ctrl.kp -= 0.01;
-						if(v_ctrl.kp < 0.0f) v_ctrl.kp = 0.0f;
-						break;
-					case sel_ki:
-						v_ctrl.ki -= 0.01;
-						if(v_ctrl.ki < 0.0f) v_ctrl.ki = 0.0f;
-						break;
-					case sel_var:
-						v_ctrl.Vtar -= 0.1;
-						if(v_ctrl.Vtar < 0.0f) v_ctrl.Vtar = 0.0f;
-						break;
-					case sel_kv:
-						v_ctrl.kv -= 1;
-						if(v_ctrl.Vtar < 0.0f) v_ctrl.kv = 0.0f;
-						break;
-					case sel_w0:
-						v_ctrl.w0 -= 1;
-						if(v_ctrl.w0 < 0.0f) v_ctrl.w0 = 0.0f;
-					  break;
-				}
-				
-				display_setting_info(&v_ctrl);
-			}
-
-		}
-		
-		//上箭头
-		if(Button_GetEvent(&btn3) == BUTTON_EVENT_CLICK)
-		{
-			if(oled_state.page_num == setting_page)
-			{	
-				if(oled_state.sel_num == 0) oled_state.sel_num = 4;
-				else oled_state.sel_num --;
-				display_array(&oled_state);
-			}
-			else if(oled_state.page_num == in_setting)
-			{
-				switch(oled_state.sel_num)
-				{
-					case sel_kp:
-						v_ctrl.kp += 0.01;
-						break;
-					case sel_ki:
-						v_ctrl.ki += 0.01;
-						break;
-					case sel_var:
-						v_ctrl.Vtar += 0.1;
-						break;
-					case sel_kv:
-						v_ctrl.kv += 1;
-						break;
-					case sel_w0:
-						v_ctrl.w0 += 1;
-						break;
-				}
-				
-				display_setting_info(&v_ctrl);
-			}
-		}
-		
+		button_ui_update();
 		
 		if(dma_flag == 1)
     	{
-      		dma_flag = 0;
+      dma_flag = 0;
 			split_buf(&v_ctrl);
 			calculate_aver(&v_ctrl);
 			calculate_rms(&v_ctrl);
 			
 			v_pid_update(&v_ctrl); 
-			
-			if(oled_state.page_num == info_page) display_info(&v_ctrl);
-
+			if(tim2_flag){
+				tim2_flag =0;
+				if(oled_state.page_num == info_page) display_info(&v_ctrl);
+				if(oled_state.page_num == in_setting)
+				{
+					//添加一行Vrms显示，方便调变比
+					char v_rms[8];
+					OLED_ShowString(0, 6, (uint8_t*)oled_string_group.vrms, 12);
+					sprintf(v_rms, "%.3f", v_ctrl.Vrms);
+					OLED_ShowString(50, 6, (uint8_t *)v_rms, 12);
+				}
+			}
 			HAL_ADC_Start_DMA(&hadc1, (uint32_t*)dma_buf, DMA_SIZE);
     	}
     /* USER CODE END WHILE */
@@ -473,14 +373,19 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		static float w0t = 0.0f;
 		static Index_TypeDef INDEX = {0};
 		static Duty_TypeDef DUTY = {0};
-		
-		w0t += v_ctrl.w0*2*PI * 1/60000; //60kHz
+		static float Ts = 1.0f/30000.0f; //30kHz
+
+		w0t += v_ctrl.w0*2*PI * Ts; //30kHz
 		if(w0t > 2*PI) w0t -= 2*PI;
 		else if(w0t < 0) w0t += 2*PI;
 		
 		get_index(&INDEX, w0t);
 		get_duty(&INDEX, &DUTY, &v_ctrl);
 		set_compare(&DUTY);
+	}
+	if(htim->Instance == TIM2)
+	{
+		tim2_flag = 1;
 	}
 }
 
@@ -539,38 +444,35 @@ void V_Ctrl_Init(V_Ctrl_TypeDef* v_ctrl)
 {
 	//统一赋0，需要改的单独列出来改
 	memset((void *)v_ctrl, 0x0, sizeof(V_Ctrl_TypeDef));
-	uint8_t kv_flash = *(uint8_t*)(FLASH_PARAM_ADDR + 0);
-	float   Vtar_flash = *(float*)(FLASH_PARAM_ADDR + 4);
-	float   kp_flash   = *(float*)(FLASH_PARAM_ADDR + 8);
-	float   ki_flash   = *(float*)(FLASH_PARAM_ADDR + 12);
-	float   w0_flash   = *(float*)(FLASH_PARAM_ADDR + 16);
-	v_ctrl->sin_k = 0.5f;
+	uint32_t kv_flash = *(uint32_t*)(FLASH_PARAM_ADDR + 0);
+	uint32_t   Vtar_flash = *(uint32_t*)(FLASH_PARAM_ADDR + 4);
+	uint32_t   kp_flash   = *(uint32_t*)(FLASH_PARAM_ADDR + 8);
+	uint32_t   ki_flash   = *(uint32_t*)(FLASH_PARAM_ADDR + 12);
+	uint32_t   w0_flash   = *(uint32_t*)(FLASH_PARAM_ADDR + 16);
+	v_ctrl->sin_k = 0.2f;
 	
-	if (kv_flash != 0xFF)
-    v_ctrl->kv = kv_flash;
+	if (kv_flash != 0xFFFFFFFF)
+			v_ctrl->kv = *(float*)kv_flash;
 	else
-			v_ctrl->kv = 50;
-
-	if (*(uint32_t*)&Vtar_flash != 0xFFFFFFFF)
-			v_ctrl->Vtar = Vtar_flash;
+			v_ctrl->kv = 50.0f;
+	if (Vtar_flash != 0xFFFFFFFF)
+			v_ctrl->Vtar = *(float*)Vtar_flash;
 	else
 			v_ctrl->Vtar = V_TAR_DEF;
 
-	if (*(uint32_t*)&kp_flash != 0xFFFFFFFF)
-			v_ctrl->kp = kp_flash;
+	if (kp_flash != 0xFFFFFFFF)
+			v_ctrl->kp = *(float*)kp_flash;
 	else
 			v_ctrl->kp = 0.02f;
 
-	if (*(uint32_t*)&ki_flash != 0xFFFFFFFF)
-			v_ctrl->ki = ki_flash;
+	if (ki_flash != 0xFFFFFFFF)
+			v_ctrl->ki = *(float*)ki_flash;
 	else
 			v_ctrl->ki = 0.01f;
-	if(*(uint32_t*)&v_ctrl->w0 != 0xFFFFFFFF)
-			v_ctrl->w0 = w0_flash;
+	if(w0_flash != 0xFFFFFFFF)
+			v_ctrl->w0 = *(float*)w0_flash;
 	else
 			v_ctrl->w0 = 50;
-
-    v_ctrl->ki = 0.01f;
 }
 void split_buf(V_Ctrl_TypeDef* v_ctrl)
 {	
@@ -614,8 +516,8 @@ void calculate_aver(V_Ctrl_TypeDef* v_ctrl)
 
 void calculate_rms(V_Ctrl_TypeDef* v_ctrl)
 {
-	//去偏置再计算 RMS
-	v_ctrl->Vrms = 0;
+		//去偏置再计算 RMS
+		v_ctrl->Vrms = 0;
     v_ctrl->Irms = 0;
 
     int block_count = DMA_SIZE / 2 / ADC_FILTER_SIZE;
@@ -752,8 +654,8 @@ void display_setting_info(V_Ctrl_TypeDef* v_ctrl)
 	
 	sprintf(kp, "%.2f", v_ctrl->kp);
 	sprintf(ki, "%.2f", v_ctrl->ki);
-	sprintf(vtar, "%.1f", v_ctrl->Vtar);
-	sprintf(kv, "% d", v_ctrl->kv);
+	sprintf(vtar, "%.2f", v_ctrl->Vtar);
+	sprintf(kv, "%5.2f", v_ctrl->kv);
 	sprintf(w0, "%.2f", v_ctrl->w0);
 	OLED_ShowString(50, 0, (uint8_t *)kp, 12);
 	OLED_ShowString(50, 1, (uint8_t *)ki, 12);
@@ -777,6 +679,153 @@ void button_group_update(void)
 	Button_Update(&btn1);
 	Button_Update(&btn2);
 	Button_Update(&btn3);
+}
+
+
+void button_ui_update(void)
+{
+	//*号键
+		if(Button_GetEvent(&btn0) == BUTTON_EVENT_CLICK)
+		{
+			//切换页面
+			if(oled_state.page_num != in_setting)
+			{
+				if(oled_state.page_num == 1) oled_state.page_num = 0;
+				else oled_state.page_num ++;
+			}
+
+			//显示页面标题
+			if(oled_state.page_num == info_page) display_info_page_title(&oled_string_group);
+			else if(oled_state.page_num == setting_page)
+			{
+				display_setting_page_title(&oled_string_group);
+				display_setting_info(&v_ctrl);
+				display_array(&oled_state);
+			}
+		}
+		
+		//#号键
+		if(Button_GetEvent(&btn1) == BUTTON_EVENT_CLICK)
+		{
+			if(oled_state.page_num == setting_page)
+			{
+				oled_state.page_num = in_setting;
+				display_star(&oled_state);
+			}
+			else if(oled_state.page_num == in_setting)
+			{
+				oled_state.page_num = setting_page;
+				display_array(&oled_state);
+				WriteFlashData(FLASH_PARAM_ADDR, (uint8_t *)&(v_ctrl.kv), sizeof(float));
+				WriteFlashData((FLASH_PARAM_ADDR+4),(uint8_t *)&(v_ctrl.Vtar), sizeof(float));
+				WriteFlashData((FLASH_PARAM_ADDR+8),(uint8_t *)&(v_ctrl.kp), sizeof(float));
+				WriteFlashData((FLASH_PARAM_ADDR+12),(uint8_t *)&(v_ctrl.ki), sizeof(float));
+				WriteFlashData((FLASH_PARAM_ADDR+16),(uint8_t *)&(v_ctrl.w0), sizeof(float));
+			}		
+		}
+		
+		//下箭头
+		if(Button_GetEvent(&btn2) == BUTTON_EVENT_CLICK)
+ 		{
+			
+			if(oled_state.page_num == setting_page)
+			{	
+				if(oled_state.sel_num == 4) oled_state.sel_num = 0;
+				else oled_state.sel_num ++;
+				display_array(&oled_state);
+			}
+			else if(oled_state.page_num == in_setting)
+			{
+				switch(oled_state.sel_num)
+				{
+					case sel_kp:
+						v_ctrl.kp -= 0.01;
+						if(v_ctrl.kp < 0.0f) v_ctrl.kp = 0.0f;
+						break;
+					case sel_ki:
+						v_ctrl.ki -= 0.01;
+						if(v_ctrl.ki < 0.0f) v_ctrl.ki = 0.0f;
+						break;
+					case sel_var:
+						v_ctrl.Vtar -= 1;
+						if(v_ctrl.Vtar < 0.0f) v_ctrl.Vtar = 0.0f;
+						break;
+					case sel_kv:
+						v_ctrl.kv -= 0.1;
+						if(v_ctrl.Vtar < 0.0f) v_ctrl.kv = 0.0f;
+						break;
+					case sel_w0:
+						v_ctrl.w0 -= 1;
+						if(v_ctrl.w0 < 0.0f) v_ctrl.w0 = 0.0f;
+					  break;
+				}
+				
+				display_setting_info(&v_ctrl);
+			}
+		}
+		else if (Button_GetEvent(&btn2) == BUTTON_EVENT_LONG_PRESS)
+		{
+			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_2);
+		}
+		
+		//上箭头
+		if(Button_GetEvent(&btn3) == BUTTON_EVENT_CLICK)
+		{
+			if(oled_state.page_num == setting_page)
+			{	
+				if(oled_state.sel_num == 0) oled_state.sel_num = 4;
+				else oled_state.sel_num --;
+				display_array(&oled_state);
+			}
+			else if(oled_state.page_num == in_setting)
+			{
+				switch(oled_state.sel_num)
+				{
+					case sel_kp:
+						v_ctrl.kp += 0.01;
+						break;
+					case sel_ki:
+						v_ctrl.ki += 0.01;
+						break;
+					case sel_var:
+						v_ctrl.Vtar += 1;
+						break;
+					case sel_kv:
+						v_ctrl.kv += 0.1;
+						break;
+					case sel_w0:
+						v_ctrl.w0 += 1;
+						break;
+				}
+				
+				display_setting_info(&v_ctrl);
+			}
+		}
+//		else if (Button_GetEvent(&btn3) == BUTTON_EVENT_LONG_PRESS)
+//		{
+//			if(oled_state.page_num == in_setting)
+//			{
+//				switch(oled_state.sel_num)
+//				{
+//					case sel_kp:
+//						v_ctrl.kp += 0.1f;
+//						break;
+//					case sel_ki:
+//						v_ctrl.ki += 0.1f;
+//						break;
+//					case sel_var:
+//						v_ctrl.Vtar += 5.0f;
+//						break;
+//					case sel_kv:
+//						v_ctrl.kv += 5.0f;
+//						break;
+//					case sel_w0:
+//						v_ctrl.w0 += 5.0f;
+//					  break;
+//				}
+//				display_setting_info(&v_ctrl);
+//			}
+//		}
 }
 
 /* USER CODE END 4 */
