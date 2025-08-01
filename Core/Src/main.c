@@ -83,6 +83,8 @@ typedef struct
 	float Vavr;
 	float Vtar;
 	float sin_k;
+	float sin_n;
+	float offset;
 	
 	float kp;
 	float ki;
@@ -97,6 +99,8 @@ typedef struct
 	uint8_t sin_k[16];
 	uint8_t vrms[8];
 	uint8_t irms[8];
+	uint8_t sin_n[16];
+	uint8_t offset[16];
 
 	uint8_t kp[8];
 	uint8_t ki[8];
@@ -119,7 +123,9 @@ typedef enum
 	sel_ki,
 	sel_var,
 	sel_kv,
-	sel_w0
+	sel_w0,
+	sel_sin_n,
+	sel_offset
 } SEL_NUM;
 
 
@@ -151,12 +157,14 @@ const OLED_String_Group oled_string_group = {
 	.sin_k	= "    M:",
 	.vrms		= "V_RMS:",
 	.irms		= "I_RMS:",
+	.sin_n      = "SIN_N :",
 
-	.kp			= "   kp:",
-	.ki			= "   ki:",
+	.kp			= "  kp:",
+	.ki			= "  ki:",
 	.vtar		= "V_Tar:",
-	.kv			= "   kv:",
-	.w0			= "   f:"
+	.kv			= "  kv:",
+	.w0			= "  f:",
+	.offset = "offset:",
 };
 
 volatile uint8_t dma_flag = 0;
@@ -306,9 +314,9 @@ int main(void)
 				{
 					//添加一行Vrms显示，方便调变比
 					char v_rms[8];
-					OLED_ShowString(0, 6, (uint8_t*)oled_string_group.vrms, 12);
+					OLED_ShowString(0, 7, (uint8_t*)oled_string_group.vrms, 12);
 					sprintf(v_rms, "%.3f", v_ctrl.Vrms);
-					OLED_ShowString(50, 6, (uint8_t *)v_rms, 12);
+					OLED_ShowString(50, 7, (uint8_t *)v_rms, 12);
 				}
 		}
 		
@@ -388,9 +396,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		static float w0t = 0.0f;
 		static Index_TypeDef INDEX = {0};
 		static Duty_TypeDef DUTY = {0};
-		static float Ts = 1.0f/30000.0f; //30kHz
+		static float Ts = 1.0f/15000.0f; //15kHz
 
-		w0t += v_ctrl.w0*2*PI * Ts; //30kHz
+		w0t += v_ctrl.w0*2*PI * Ts; //15kHz
 		if(w0t > 2*PI) w0t -= 2*PI;
 		else if(w0t < 0) w0t += 2*PI;
 		
@@ -441,17 +449,19 @@ void get_duty(Index_TypeDef* index, Duty_TypeDef* duty, V_Ctrl_TypeDef* v_ctrl)
 	//	duty->duty2 = 0.7  * (sin_table[index->index2] + harmonic3_table[index->index2] / 6.0f) + 1050;
 	//	duty->duty3 = 0.7  * (sin_table[index->index3] + harmonic3_table[index->index3] / 6.0f) + 1050;
 
-		duty->dutya =  v_ctrl->sin_k * (sin_table[index->index1] + harmonic3_table[index->index1] / 6.0f) + 1050;
-		duty->dutyb =  v_ctrl->sin_k* (sin_table[index->index2] + harmonic3_table[index->index2] / 6.0f) + 1050;
-		duty->dutyc =  v_ctrl->sin_k * (sin_table[index->index3] + harmonic3_table[index->index3] / 6.0f) + 1050;
+		duty->dutya =  v_ctrl->sin_k * (sin_table[index->index1+(int)v_ctrl->offset] + harmonic3_table[index->index1+(int)v_ctrl->offset] / 6.0f) + 1050;
+		duty->dutyb =  v_ctrl->sin_k* (sin_table[index->index2+(int)v_ctrl->offset] + harmonic3_table[index->index2+(int)v_ctrl->offset] / 6.0f) + 1050;
+		duty->dutyc =  v_ctrl->sin_k * (sin_table[index->index3+(int)v_ctrl->offset] + harmonic3_table[index->index3+(int)v_ctrl->offset] / 6.0f) + 1050;
 	}
+
 	else {
 		duty->duty1 = v_ctrl->sin_k  * (sin_table[index->index1] + harmonic3_table[index->index1] / 6.0f) + 1050;
 		duty->duty2 = v_ctrl->sin_k  * (sin_table[index->index2] + harmonic3_table[index->index2] / 6.0f) + 1050;
 		duty->duty3 = v_ctrl->sin_k  * (sin_table[index->index3] + harmonic3_table[index->index3] / 6.0f) + 1050;
 		
-		duty->dutya = 0.4*(sin_table[index->index1] + harmonic3_table[index->index1] / 6.0f) + 1050;
-		duty->dutyb = 0.4*(sin_table[index->index2] + harmonic3_table[index->index2] / 6.0f) + 1050;
+		duty->dutya = v_ctrl->sin_n*(sin_table[index->index1+(int)v_ctrl->offset] + harmonic3_table[index->index1+(int)v_ctrl->offset] / 6.0f) + 1050;
+		duty->dutyb = v_ctrl->sin_n*(sin_table[index->index2+(int)v_ctrl->offset] + harmonic3_table[index->index2+(int)v_ctrl->offset] / 6.0f) + 1050;
+		duty->dutyc = v_ctrl->sin_n*(sin_table[index->index3+(int)v_ctrl->offset] + harmonic3_table[index->index3+(int)v_ctrl->offset] / 6.0f) + 1050;
 	}
 	
 }
@@ -501,6 +511,8 @@ void V_Ctrl_Init(V_Ctrl_TypeDef* v_ctrl)
 	float   ki_flash   = *(float*)(FLASH_PARAM_ADDR + 12);
 	float   w0_flash   = *(float*)(FLASH_PARAM_ADDR + 16);
 	v_ctrl->sin_k = 0.2f;
+	v_ctrl->sin_n = 0.4f;
+	v_ctrl->offset = 0.0f;
 	
 	if (*(uint32_t*)&kv_flash != 0xFFFFFFFF)
 			v_ctrl->kv = kv_flash;
@@ -608,6 +620,7 @@ void display_info_page_title(const OLED_String_Group* oled_string_group)
 	OLED_ShowString(0, 0, (uint8_t*)oled_string_group->sin_k, 16);
 	OLED_ShowString(0, 2, (uint8_t*)oled_string_group->vrms, 16);
 	OLED_ShowString(0, 4, (uint8_t*)oled_string_group->irms, 16);
+	OLED_ShowString(0, 6, (uint8_t*)oled_string_group->sin_n, 16);
 }
 
 void display_setting_page_title(const OLED_String_Group* oled_string_group)
@@ -618,6 +631,8 @@ void display_setting_page_title(const OLED_String_Group* oled_string_group)
 	OLED_ShowString(0, 2, (uint8_t*)oled_string_group->vtar, 12);
 	OLED_ShowString(0, 3, (uint8_t*)oled_string_group->kv, 12);
 	OLED_ShowString(0, 4, (uint8_t*)oled_string_group->w0, 12);
+	OLED_ShowString(0, 5, (uint8_t*)oled_string_group->sin_n, 12);
+	OLED_ShowString(0, 6, (uint8_t*)oled_string_group->offset, 12);
 }
 
 void display_info(const V_Ctrl_TypeDef* v_ctrl)
@@ -625,13 +640,16 @@ void display_info(const V_Ctrl_TypeDef* v_ctrl)
 	static char sin_k[8];
 	static char v_rms[8];
 	static char i_rms[8];
+	static char sin_n[8];
 	
 	sprintf(sin_k, "%.3f", v_ctrl->sin_k);
 	sprintf(v_rms, "%.3f", v_ctrl->Vrms);
 	sprintf(i_rms, "%.3f", v_ctrl->Irms);
+	sprintf(sin_n, "%.3f", v_ctrl->sin_n);
 	OLED_ShowString(50, 0, (uint8_t *)sin_k, 16);
 	OLED_ShowString(50, 2, (uint8_t *)v_rms, 16);
 	OLED_ShowString(50, 4, (uint8_t *)i_rms, 16);
+	OLED_ShowString(50, 6, (uint8_t *)sin_n, 16);
 }
 
 void display_array(const OLED_STATE* oled_state)
@@ -643,6 +661,8 @@ void display_array(const OLED_STATE* oled_state)
 	OLED_ShowString(100, 2, (uint8_t*)"   ", 12);
 	OLED_ShowString(100, 3, (uint8_t*)"   ", 12);
 	OLED_ShowString(100, 4, (uint8_t*)"   ", 12);
+	OLED_ShowString(100, 5, (uint8_t*)"   ", 12);
+	OLED_ShowString(100, 6, (uint8_t*)"   ", 12);
 	static uint8_t array[4] = "<--";
 	switch(oled_state->sel_num)
 	{
@@ -661,6 +681,12 @@ void display_array(const OLED_STATE* oled_state)
 		case sel_w0:
 			OLED_ShowString(100, 4, array, 12);
 			break;
+		case sel_sin_n:
+			OLED_ShowString(100, 5, array, 12);
+			break;
+		case sel_offset:
+			OLED_ShowString(100, 6, array, 12);
+			break;
 	}
 }
 
@@ -672,6 +698,8 @@ void display_star(const OLED_STATE* oled_state)
 	OLED_ShowString(100, 2, (uint8_t*)"   ", 12);
 	OLED_ShowString(100, 3, (uint8_t*)"   ", 12);
 	OLED_ShowString(100, 4, (uint8_t*)"   ", 12);
+	OLED_ShowString(100, 5, (uint8_t*)"   ", 12);
+	OLED_ShowString(100, 6, (uint8_t*)"   ", 12);
 	static uint8_t array[4] = "*";
 	switch(oled_state->sel_num)
 	{
@@ -690,6 +718,12 @@ void display_star(const OLED_STATE* oled_state)
 		case sel_w0:
 			OLED_ShowString(100, 4, array, 12);
 			break;
+		case sel_sin_n:
+			OLED_ShowString(100, 5, array, 12);
+			break;
+		case sel_offset:
+			OLED_ShowString(100, 6, array, 12);
+			break;
 	}
 }
 
@@ -702,17 +736,23 @@ void display_setting_info(V_Ctrl_TypeDef* v_ctrl)
 	static char vtar[8];
 	static char kv[8];
 	static char w0[8];
+	static char sin_n[8];
+	static char offset[16];
 	
 	sprintf(kp, "%.2f", v_ctrl->kp);
 	sprintf(ki, "%.2f", v_ctrl->ki);
 	sprintf(vtar, "%.2f", v_ctrl->Vtar);
 	sprintf(kv, "%5.2f", v_ctrl->kv);
 	sprintf(w0, "%.2f", v_ctrl->w0);
+	sprintf(sin_n, "%.2f", v_ctrl->sin_n);
+	sprintf(offset, "%.2f", v_ctrl->offset);
 	OLED_ShowString(50, 0, (uint8_t *)kp, 12);
 	OLED_ShowString(50, 1, (uint8_t *)ki, 12);
 	OLED_ShowString(50, 2, (uint8_t *)vtar, 12);
 	OLED_ShowString(50, 3, (uint8_t *)kv, 12);
 	OLED_ShowString(50, 4, (uint8_t *)w0, 12);
+	OLED_ShowString(50, 5, (uint8_t *)sin_n, 12);
+	OLED_ShowString(50, 6, (uint8_t *)offset, 12);
 }
 
 
@@ -785,7 +825,7 @@ void button_ui_update(void)
 			
 			if(oled_state.page_num == setting_page)
 			{	
-				if(oled_state.sel_num == 4) oled_state.sel_num = 0;
+				if(oled_state.sel_num == 6) oled_state.sel_num = 0;
 				else oled_state.sel_num ++;
 				display_array(&oled_state);
 			}
@@ -813,6 +853,13 @@ void button_ui_update(void)
 						v_ctrl.w0 -= 1;
 						if(v_ctrl.w0 < 0.0f) v_ctrl.w0 = 0.0f;
 					  break;
+					case sel_sin_n:
+						v_ctrl.sin_n -= 0.01;
+						if(v_ctrl.sin_n < 0.0f) v_ctrl.sin_n = 0.0f;
+					break;
+					case sel_offset:
+						v_ctrl.offset -= 1.0f;
+					break;
 				}
 				
 				display_setting_info(&v_ctrl);
@@ -839,6 +886,13 @@ void button_ui_update(void)
 					case sel_w0:
 						v_ctrl.w0 -= 1.0f;
 					  break;
+					case sel_sin_n:
+						v_ctrl.sin_n -= 0.1;
+						if(v_ctrl.sin_n < 0.0f) v_ctrl.sin_n = 0.0f;
+					break;
+					case sel_offset:
+						v_ctrl.offset -= 10;
+					break;
 				}
 				display_setting_info(&v_ctrl);
 			}
@@ -848,7 +902,7 @@ void button_ui_update(void)
 		{
 			if(oled_state.page_num == setting_page)
 			{	
-				if(oled_state.sel_num == 0) oled_state.sel_num = 4;
+				if(oled_state.sel_num == 0) oled_state.sel_num = 6;
 				else oled_state.sel_num --;
 				display_array(&oled_state);
 			}
@@ -870,6 +924,12 @@ void button_ui_update(void)
 						break;
 					case sel_w0:
 						v_ctrl.w0 += 1;
+						break;
+					case sel_sin_n:
+						v_ctrl.sin_n += 0.01;
+						break;
+					case sel_offset:
+						v_ctrl.offset += 1.0f;
 						break;
 				}
 				
@@ -896,7 +956,10 @@ void button_ui_update(void)
 						break;
 					case sel_w0:
 						v_ctrl.w0 += 1.0f;
-					  break;
+					  	break;
+					case sel_offset:
+						v_ctrl.offset += 10.0f;
+							break;
 				}
 				display_setting_info(&v_ctrl);
 			}
