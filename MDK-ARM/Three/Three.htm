@@ -3,7 +3,7 @@
 <title>Static Call Graph - [Three\Three.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image Three\Three.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6220000: Last Updated: Fri Aug  1 17:41:57 2025
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6220000: Last Updated: Fri Aug  1 20:09:47 2025
 <BR><P>
 <H3>Maximum Stack Usage =        324 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -271,7 +271,7 @@ Global Symbols
 <P><STRONG><a name="[126]"></a>__rt_entry_postsh_1</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, __rtentry2.o(.ARM.Collect$$rtentry$$00000009))
 
 <P><STRONG><a name="[71]"></a>__rt_entry_main</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, __rtentry2.o(.ARM.Collect$$rtentry$$0000000D))
-<BR><BR>[Stack]<UL><LI>Max Depth = 304 + Unknown Stack Size
+<BR><BR>[Stack]<UL><LI>Max Depth = 296 + Unknown Stack Size
 <LI>Call Chain = __rt_entry_main &rArr; main &rArr; button_ui_update &rArr; display_setting_info &rArr; OLED_ShowString &rArr; OLED_ShowChar &rArr; HAL_I2C_Mem_Write &rArr; I2C_RequestMemoryWrite &rArr; I2C_WaitOnMasterAddressFlagUntilTimeout
 </UL>
 <BR>[Calls]<UL><LI><a href="#[72]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
@@ -1429,7 +1429,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[e5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;button_ui_update
 </UL>
 
-<P><STRONG><a name="[e5]"></a>button_ui_update</STRONG> (Thumb, 1528 bytes, Stack size 24 bytes, main.o(.text.button_ui_update))
+<P><STRONG><a name="[e5]"></a>button_ui_update</STRONG> (Thumb, 1568 bytes, Stack size 24 bytes, main.o(.text.button_ui_update))
 <BR><BR>[Stack]<UL><LI>Max Depth = 264 + Unknown Stack Size
 <LI>Call Chain = button_ui_update &rArr; display_setting_info &rArr; OLED_ShowString &rArr; OLED_ShowChar &rArr; HAL_I2C_Mem_Write &rArr; I2C_RequestMemoryWrite &rArr; I2C_WaitOnMasterAddressFlagUntilTimeout
 </UL>
@@ -1482,8 +1482,8 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[bb]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_PeriodElapsedCallback
 </UL>
 
-<P><STRONG><a name="[72]"></a>main</STRONG> (Thumb, 3094 bytes, Stack size 40 bytes, main.o(.text.main))
-<BR><BR>[Stack]<UL><LI>Max Depth = 304 + Unknown Stack Size
+<P><STRONG><a name="[72]"></a>main</STRONG> (Thumb, 2962 bytes, Stack size 32 bytes, main.o(.text.main))
+<BR><BR>[Stack]<UL><LI>Max Depth = 296 + Unknown Stack Size
 <LI>Call Chain = main &rArr; button_ui_update &rArr; display_setting_info &rArr; OLED_ShowString &rArr; OLED_ShowChar &rArr; HAL_I2C_Mem_Write &rArr; I2C_RequestMemoryWrite &rArr; I2C_WaitOnMasterAddressFlagUntilTimeout
 </UL>
 <BR>[Calls]<UL><LI><a href="#[95]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DMA_U16_Filter_ClippedAverage_MedianBase
