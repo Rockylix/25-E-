@@ -396,7 +396,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		static float w0t = 0.0f;
 		static Index_TypeDef INDEX = {0};
 		static Duty_TypeDef DUTY = {0};
-		static float Ts = 1.0f/15000.0f; //15kHz
+		static float Ts = 1.0f/10000.0f; //10kHz
 
 		w0t += v_ctrl.w0*2*PI * Ts; //15kHz
 		if(w0t > 2*PI) w0t -= 2*PI;
