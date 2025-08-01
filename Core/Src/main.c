@@ -160,7 +160,7 @@ const OLED_String_Group oled_string_group = {
 	.sin_n      = "SIN_N :",
 
 	.kp			= "  kp:",
-	.ki			= "sin_k:",
+	.ki			= "  ki:",
 	.vtar		= "V_Tar:",
 	.kv			= "  kv:",
 	.w0			= "  f:",
@@ -327,9 +327,11 @@ int main(void)
 			calculate_aver(&v_ctrl);
 			calculate_rms(&v_ctrl);
 			
-			//v_pid_update(&v_ctrl); 
+			v_pid_update(&v_ctrl); 
 			HAL_ADC_Start_DMA(&hadc1, (uint32_t*)dma_buf, DMA_SIZE);
+//			HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_2);
 		}
+		
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -543,9 +545,11 @@ void V_Ctrl_Init(V_Ctrl_TypeDef* v_ctrl)
 	float   kp_flash   = *(float*)(FLASH_PARAM_ADDR + 8);
 	float   ki_flash   = *(float*)(FLASH_PARAM_ADDR + 12);
 	float   w0_flash   = *(float*)(FLASH_PARAM_ADDR + 16);
+	float   sinn_flash   = *(float*)(FLASH_PARAM_ADDR + 20);
+	float   offset_flash   = *(float*)(FLASH_PARAM_ADDR + 24);
 	v_ctrl->sin_k = 0.7f;
-	v_ctrl->sin_n = 0.7f;
-	v_ctrl->offset = 0.0f;
+//	v_ctrl->sin_n = 0.7f;
+//	v_ctrl->offset = 0.0f;
 	
 	if (*(uint32_t*)&kv_flash != 0xFFFFFFFF)
 			v_ctrl->kv = kv_flash;
@@ -569,6 +573,17 @@ void V_Ctrl_Init(V_Ctrl_TypeDef* v_ctrl)
 			v_ctrl->w0 = w0_flash;
 	else
 			v_ctrl->w0 = 50;
+	
+	if (*(uint32_t*)&sinn_flash != 0xFFFFFFFF)
+			v_ctrl->sin_n = sinn_flash;
+	else
+			v_ctrl->sin_n = 0.8f;
+	
+	if (*(uint32_t*)& offset_flash != 0xFFFFFFFF)
+			v_ctrl->offset =  offset_flash;
+	else
+			v_ctrl->offset = 0.0f;
+	
 }
 void split_buf(V_Ctrl_TypeDef* v_ctrl)
 {	
@@ -773,7 +788,7 @@ void display_setting_info(V_Ctrl_TypeDef* v_ctrl)
 	static char offset[8];
 	
 	sprintf(kp, "%.2f", v_ctrl->kp);
-	sprintf(ki, "%.2f", v_ctrl->sin_k);
+	sprintf(ki, "%.2f", v_ctrl->ki);
 	sprintf(vtar, "%.2f", v_ctrl->Vtar);
 	sprintf(kv, "%5.2f", v_ctrl->kv);
 	sprintf(w0, "%.2f", v_ctrl->w0);
@@ -849,6 +864,8 @@ void button_ui_update(void)
 				WriteFlashData((FLASH_PARAM_ADDR+8),(uint8_t *)&(v_ctrl.kp), sizeof(uint32_t));
 				WriteFlashData((FLASH_PARAM_ADDR+12),(uint8_t *)&(v_ctrl.ki), sizeof(uint32_t));
 				WriteFlashData((FLASH_PARAM_ADDR+16),(uint8_t *)&(v_ctrl.w0), sizeof(uint32_t));
+				WriteFlashData((FLASH_PARAM_ADDR+20),(uint8_t *)&(v_ctrl.sin_n), sizeof(uint32_t));
+				WriteFlashData((FLASH_PARAM_ADDR+24),(uint8_t *)&(v_ctrl.offset), sizeof(uint32_t));
 			}		
 		}
 		
@@ -870,13 +887,13 @@ void button_ui_update(void)
 						v_ctrl.kp -= 0.01;
 						if(v_ctrl.kp < 0.0f) v_ctrl.kp = 0.0f;
 						break;
-//					case sel_ki:
-//						v_ctrl.ki -= 0.01;
-//						if(v_ctrl.ki < 0.0f) v_ctrl.ki = 0.0f;
-//						break;
 					case sel_ki:
-							v_ctrl.sin_k-=0.01;
-							if(v_ctrl.sin_k < 0.0f) v_ctrl.sin_k = 0.0f;
+						v_ctrl.ki -= 0.01;
+						if(v_ctrl.ki < 0.0f) v_ctrl.ki = 0.0f;
+						break;
+//					case sel_ki:
+//							v_ctrl.sin_k-=0.01;
+//							if(v_ctrl.sin_k < 0.0f) v_ctrl.sin_k = 0.0f;
 					case sel_var:
 						v_ctrl.Vtar -= 1;
 						if(v_ctrl.Vtar < 0.0f) v_ctrl.Vtar = 0.0f;
@@ -894,7 +911,7 @@ void button_ui_update(void)
 						if(v_ctrl.sin_n < 0.0f) v_ctrl.sin_n = 0.0f;
 					break;
 					case sel_offset:
-						v_ctrl.offset -= 1;
+						v_ctrl.offset -= 0.1;
 					break;
 				}
 				
@@ -910,12 +927,12 @@ void button_ui_update(void)
 					case sel_kp:
 						v_ctrl.kp -= 0.1f;
 						break;
-//					case sel_ki:
-//						v_ctrl.ki -= 0.1f;
-//						break;
 					case sel_ki:
-						v_ctrl.sin_k-=0.1;
-							if(v_ctrl.sin_k < 0.0f) v_ctrl.sin_k = 0.0f;
+						v_ctrl.ki -= 0.1f;
+						break;
+//					case sel_ki:
+//						v_ctrl.sin_k-=0.1;
+//							if(v_ctrl.sin_k < 0.0f) v_ctrl.sin_k = 0.0f;
 					case sel_var:
 						v_ctrl.Vtar -= 1.0f;
 						break;
@@ -930,7 +947,7 @@ void button_ui_update(void)
 						if(v_ctrl.sin_n < 0.0f) v_ctrl.sin_n = 0.0f;
 					break;
 					case sel_offset:
-						v_ctrl.offset -=5;
+						v_ctrl.offset -=1;
 					break;
 				}
 				display_setting_info(&v_ctrl);
@@ -952,11 +969,11 @@ void button_ui_update(void)
 					case sel_kp:
 						v_ctrl.kp += 0.01;
 						break;
-//					case sel_ki:
-//						v_ctrl.ki += 0.01;
-//						break;
 					case sel_ki:
-						v_ctrl.sin_k+=0.01;
+						v_ctrl.ki += 0.01;
+						break;
+//					case sel_ki:
+//						v_ctrl.sin_k+=0.01;
 					case sel_var:
 						v_ctrl.Vtar += 1;
 						break;
@@ -970,7 +987,7 @@ void button_ui_update(void)
 						v_ctrl.sin_n += 0.01;
 						break;
 					case sel_offset:
-						v_ctrl.offset += 1;
+						v_ctrl.offset += 0.1;
 						break;
 				}
 				
@@ -986,11 +1003,11 @@ void button_ui_update(void)
 					case sel_kp:
 						v_ctrl.kp += 0.1f;
 						break;
-//					case sel_ki:
-//						v_ctrl.ki += 0.1f;
-//						break;
 					case sel_ki:
-						v_ctrl.sin_k+=0.1;
+						v_ctrl.ki += 0.1f;
+						break;
+//					case sel_ki:
+//						v_ctrl.sin_k+=0.1;
 					case sel_var:
 						v_ctrl.Vtar += 1.0f;
 						break;
@@ -1004,7 +1021,7 @@ void button_ui_update(void)
 						v_ctrl.sin_n += 0.1;
 						break;
 					case sel_offset:
-						v_ctrl.offset += 5;
+						v_ctrl.offset += 1;
 						break;
 				}
 				display_setting_info(&v_ctrl);
