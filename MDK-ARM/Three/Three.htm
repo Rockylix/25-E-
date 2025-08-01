@@ -3,7 +3,7 @@
 <title>Static Call Graph - [Three\Three.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image Three\Three.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6220000: Last Updated: Fri Aug  1 10:48:05 2025
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6220000: Last Updated: Fri Aug  1 13:33:26 2025
 <BR><P>
 <H3>Maximum Stack Usage =        324 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -895,7 +895,8 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[cd]"></a>HAL_GPIO_WritePin</STRONG> (Thumb, 10 bytes, Stack size 0 bytes, stm32f4xx_hal_gpio.o(.text.HAL_GPIO_WritePin))
-<BR><BR>[Called By]<UL><LI><a href="#[cc]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_GPIO_Init
+<BR><BR>[Called By]<UL><LI><a href="#[c3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;get_duty
+<LI><a href="#[cc]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MX_GPIO_Init
 <LI><a href="#[72]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
@@ -1428,7 +1429,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[e5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;button_ui_update
 </UL>
 
-<P><STRONG><a name="[e5]"></a>button_ui_update</STRONG> (Thumb, 1368 bytes, Stack size 24 bytes, main.o(.text.button_ui_update))
+<P><STRONG><a name="[e5]"></a>button_ui_update</STRONG> (Thumb, 1528 bytes, Stack size 24 bytes, main.o(.text.button_ui_update))
 <BR><BR>[Stack]<UL><LI>Max Depth = 264 + Unknown Stack Size
 <LI>Call Chain = button_ui_update &rArr; display_setting_info &rArr; OLED_ShowString &rArr; OLED_ShowChar &rArr; HAL_I2C_Mem_Write &rArr; I2C_RequestMemoryWrite &rArr; I2C_WaitOnMasterAddressFlagUntilTimeout
 </UL>
@@ -1446,7 +1447,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[72]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[e8]"></a>display_array</STRONG> (Thumb, 112 bytes, Stack size 16 bytes, main.o(.text.display_array))
+<P><STRONG><a name="[e8]"></a>display_array</STRONG> (Thumb, 124 bytes, Stack size 16 bytes, main.o(.text.display_array))
 <BR><BR>[Stack]<UL><LI>Max Depth = 216<LI>Call Chain = display_array &rArr; OLED_ShowString &rArr; OLED_ShowChar &rArr; HAL_I2C_Mem_Write &rArr; I2C_RequestMemoryWrite &rArr; I2C_WaitOnMasterAddressFlagUntilTimeout
 </UL>
 <BR>[Calls]<UL><LI><a href="#[dd]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OLED_ShowString
@@ -1454,7 +1455,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[e5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;button_ui_update
 </UL>
 
-<P><STRONG><a name="[ec]"></a>display_setting_info</STRONG> (Thumb, 248 bytes, Stack size 40 bytes, main.o(.text.display_setting_info))
+<P><STRONG><a name="[ec]"></a>display_setting_info</STRONG> (Thumb, 284 bytes, Stack size 40 bytes, main.o(.text.display_setting_info))
 <BR><BR>[Stack]<UL><LI>Max Depth = 240 + Unknown Stack Size
 <LI>Call Chain = display_setting_info &rArr; OLED_ShowString &rArr; OLED_ShowChar &rArr; HAL_I2C_Mem_Write &rArr; I2C_RequestMemoryWrite &rArr; I2C_WaitOnMasterAddressFlagUntilTimeout
 </UL>
@@ -1465,7 +1466,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[e5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;button_ui_update
 </UL>
 
-<P><STRONG><a name="[e7]"></a>display_star</STRONG> (Thumb, 112 bytes, Stack size 16 bytes, main.o(.text.display_star))
+<P><STRONG><a name="[e7]"></a>display_star</STRONG> (Thumb, 124 bytes, Stack size 16 bytes, main.o(.text.display_star))
 <BR><BR>[Stack]<UL><LI>Max Depth = 216<LI>Call Chain = display_star &rArr; OLED_ShowString &rArr; OLED_ShowChar &rArr; HAL_I2C_Mem_Write &rArr; I2C_RequestMemoryWrite &rArr; I2C_WaitOnMasterAddressFlagUntilTimeout
 </UL>
 <BR>[Calls]<UL><LI><a href="#[dd]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;OLED_ShowString
@@ -1473,13 +1474,15 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[e5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;button_ui_update
 </UL>
 
-<P><STRONG><a name="[c3]"></a>get_duty</STRONG> (Thumb, 272 bytes, Stack size 16 bytes, main.o(.text.get_duty))
-<BR><BR>[Stack]<UL><LI>Max Depth = 16<LI>Call Chain = get_duty
+<P><STRONG><a name="[c3]"></a>get_duty</STRONG> (Thumb, 612 bytes, Stack size 28 bytes, main.o(.text.get_duty))
+<BR><BR>[Stack]<UL><LI>Max Depth = 28<LI>Call Chain = get_duty
+</UL>
+<BR>[Calls]<UL><LI><a href="#[cd]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_WritePin
 </UL>
 <BR>[Called By]<UL><LI><a href="#[bb]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_PeriodElapsedCallback
 </UL>
 
-<P><STRONG><a name="[72]"></a>main</STRONG> (Thumb, 3056 bytes, Stack size 40 bytes, main.o(.text.main))
+<P><STRONG><a name="[72]"></a>main</STRONG> (Thumb, 3094 bytes, Stack size 40 bytes, main.o(.text.main))
 <BR><BR>[Stack]<UL><LI>Max Depth = 304 + Unknown Stack Size
 <LI>Call Chain = main &rArr; button_ui_update &rArr; display_setting_info &rArr; OLED_ShowString &rArr; OLED_ShowChar &rArr; HAL_I2C_Mem_Write &rArr; I2C_RequestMemoryWrite &rArr; I2C_WaitOnMasterAddressFlagUntilTimeout
 </UL>
