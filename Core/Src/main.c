@@ -160,7 +160,7 @@ const OLED_String_Group oled_string_group = {
 	.sin_n      = "SIN_N :",
 
 	.kp			= "  kp:",
-	.ki			= "  sin_k:",
+	.ki			= "sin_k:",
 	.vtar		= "V_Tar:",
 	.kv			= "  kv:",
 	.w0			= "  f:",
@@ -302,7 +302,7 @@ int main(void)
 		button_ui_update();
 		
 		if(tim2_flag){
-				if(tim2_count >= 100&& tim_1s == 0 )
+				if(tim2_count >= 50&& tim_1s == 0 )
 				{
 					tim_1s = 1;
 					tim2_count = 0;
