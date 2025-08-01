@@ -507,7 +507,7 @@ void V_Ctrl_Init(V_Ctrl_TypeDef* v_ctrl)
 	float   ki_flash   = *(float*)(FLASH_PARAM_ADDR + 12);
 	float   w0_flash   = *(float*)(FLASH_PARAM_ADDR + 16);
 	v_ctrl->sin_k = 0.2f;
-	v_ctrl->sin_n = 0.4f;
+	v_ctrl->sin_n = 0.86f;
 	
 	if (*(uint32_t*)&kv_flash != 0xFFFFFFFF)
 			v_ctrl->kv = kv_flash;
@@ -829,7 +829,7 @@ void button_ui_update(void)
 						if(v_ctrl.Vtar < 0.0f) v_ctrl.Vtar = 0.0f;
 						break;
 					case sel_kv:
-						v_ctrl.kv -= 0.1;
+						v_ctrl.kv -= 0.01;
 						if(v_ctrl.Vtar < 0.0f) v_ctrl.kv = 0.0f;
 						break;
 					case sel_w0:
@@ -861,7 +861,7 @@ void button_ui_update(void)
 						v_ctrl.Vtar -= 1.0f;
 						break;
 					case sel_kv:
-						v_ctrl.kv -= 1.0f;
+						v_ctrl.kv -= 0.1f;
 						break;
 					case sel_w0:
 						v_ctrl.w0 -= 1.0f;
@@ -897,7 +897,7 @@ void button_ui_update(void)
 						v_ctrl.Vtar += 1;
 						break;
 					case sel_kv:
-						v_ctrl.kv += 0.1;
+						v_ctrl.kv += 0.01;
 						break;
 					case sel_w0:
 						v_ctrl.w0 += 1;
@@ -926,7 +926,7 @@ void button_ui_update(void)
 						v_ctrl.Vtar += 1.0f;
 						break;
 					case sel_kv:
-						v_ctrl.kv += 1.0f;
+						v_ctrl.kv += 0.1f;
 						break;
 					case sel_w0:
 						v_ctrl.w0 += 1.0f;
