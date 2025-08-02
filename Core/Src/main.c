@@ -279,7 +279,7 @@ int main(void)
 //	HAL_TIM_Base_Start_IT(&htim8);
 	
 	//用来中断显示屏幕
-//	WriteFlashData(FLASH_PARAM_ADDR, (uint8_t *)0xffff, sizeof(uint32_t));
+	//WriteFlashData((FLASH_PARAM_ADDR+24), (uint8_t *)0xffffffff, sizeof(uint32_t));
 	HAL_TIM_Base_Start_IT(&htim2);
 	
 	//开启ADC采样
@@ -398,9 +398,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		static float w0t = 0.0f;
 		static Index_TypeDef INDEX = {0};
 		static Duty_TypeDef DUTY = {0};
-		static float Ts = 1.0f/15000.0f; //10kHz
+		static float Ts = 1.0f/15000.0f; //15kHz
 
 		w0t += v_ctrl.w0*2*PI * Ts; //15kHz
+		
 		if(w0t > 2*PI) w0t -= 2*PI;
 		else if(w0t < 0) w0t += 2*PI;
 		
@@ -505,12 +506,12 @@ void get_duty(Index_TypeDef* index, Duty_TypeDef* duty, V_Ctrl_TypeDef* v_ctrl)
 void set_compare(Duty_TypeDef* duty)
 {
 	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, duty->duty1);
-	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, duty->duty2);
-	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_3, duty->duty3);
-	//开启tim1
-	
 	__HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_1, duty->dutya);
+	
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, duty->duty2);
 	__HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_2, duty->dutyb);
+	
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_3, duty->duty3);
 	__HAL_TIM_SetCompare(&htim1, TIM_CHANNEL_3, duty->dutyc);
 	
 	return;
